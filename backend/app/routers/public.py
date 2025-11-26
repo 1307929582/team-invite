@@ -281,6 +281,19 @@ async def use_redeem_code(data: RedeemRequest, db: Session = Depends(get_db)):
     if code.used_count >= code.max_uses:
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
+    # 原子性增加使用次数，防止并发超额
+    from sqlalchemy import update
+    result = db.execute(
+        update(RedeemCode)
+        .where(RedeemCode.id == code.id)
+        .where(RedeemCode.used_count < RedeemCode.max_uses)
+        .values(used_count=RedeemCode.used_count + 1)
+    )
+    
+    if result.rowcount == 0:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="兑换码已用完")
+    
     # 查找有空位的 Team（加锁防止并发超额）
     teams = db.query(Team).filter(Team.is_active == True).with_for_update().all()
     
@@ -312,10 +325,7 @@ async def use_redeem_code(data: RedeemRequest, db: Session = Depends(get_db)):
             [data.email.lower().strip()]
         )
         
-        # 更新兑换码使用次数
-        code.used_count += 1
-        
-        # 记录邀请
+        # 记录邀请（使用次数已在前面原子更新）
         invite = InviteRecord(
             team_id=available_team.id,
             email=data.email.lower().strip(),
@@ -394,6 +404,19 @@ async def direct_redeem(data: DirectRedeemRequest, db: Session = Depends(get_db)
     if code.used_count >= code.max_uses:
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
+    # 原子性增加使用次数，防止并发超额
+    from sqlalchemy import update
+    result = db.execute(
+        update(RedeemCode)
+        .where(RedeemCode.id == code.id)
+        .where(RedeemCode.used_count < RedeemCode.max_uses)
+        .values(used_count=RedeemCode.used_count + 1)
+    )
+    
+    if result.rowcount == 0:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="兑换码已用完")
+    
     # 查找有空位的 Team（加锁防止并发超额）
     teams = db.query(Team).filter(Team.is_active == True).with_for_update().all()
     
@@ -423,10 +446,7 @@ async def direct_redeem(data: DirectRedeemRequest, db: Session = Depends(get_db)
             [data.email.lower().strip()]
         )
         
-        # 更新兑换码使用次数
-        code.used_count += 1
-        
-        # 记录邀请
+        # 记录邀请（使用次数已在前面原子更新）
         invite = InviteRecord(
             team_id=available_team.id,
             email=data.email.lower().strip(),
