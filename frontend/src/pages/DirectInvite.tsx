@@ -137,8 +137,8 @@ export default function DirectInvite() {
             <div style={{ marginBottom: 24 }}>
               <div style={{ marginBottom: 8, fontWeight: 500 }}>邮箱地址</div>
               <Input
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="your@email.com"
+                prefix={<MailOutlined style={{ color: '#94a3b8', marginRight: 8 }} />}
+                placeholder="  your@email.com"
                 size="large"
                 value={email}
                 onChange={e => setEmail(e.target.value)}

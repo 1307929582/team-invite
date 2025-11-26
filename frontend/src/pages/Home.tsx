@@ -253,8 +253,8 @@ export default function Home() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ marginBottom: 8, fontWeight: 500 }}>邮箱地址</div>
               <Input
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="your@email.com"
+                prefix={<MailOutlined style={{ color: '#94a3b8', marginRight: 8 }} />}
+                placeholder="  your@email.com"
                 size="large"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -268,8 +268,8 @@ export default function Home() {
             <div style={{ marginBottom: 24 }}>
               <div style={{ marginBottom: 8, fontWeight: 500 }}>兑换码</div>
               <Input
-                prefix={<GiftOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="输入兑换码"
+                prefix={<GiftOutlined style={{ color: '#94a3b8', marginRight: 8 }} />}
+                placeholder="  输入兑换码"
                 size="large"
                 value={redeemCode}
                 onChange={e => setRedeemCode(e.target.value.toUpperCase())}
