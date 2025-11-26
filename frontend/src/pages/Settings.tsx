@@ -182,7 +182,7 @@ export default function Settings() {
             description={
               <div>
                 <p>配置 SMTP 后可接收超员预警、Token 过期提醒等通知</p>
-                <p>常用配置：QQ邮箱 smtp.qq.com:465 | 163邮箱 smtp.163.com:465 | Gmail smtp.gmail.com:587</p>
+                <p>常用配置：Gmail smtp.gmail.com:587 | Outlook smtp.office365.com:587</p>
               </div>
             }
           />
@@ -200,32 +200,32 @@ export default function Settings() {
           <Form.Item 
             name="smtp_host" 
             label="SMTP 服务器"
-            extra="如 smtp.qq.com、smtp.163.com"
+            extra="如 smtp.gmail.com、smtp.office365.com"
           >
-            <Input placeholder="smtp.qq.com" size="large" />
+            <Input placeholder="smtp.gmail.com" size="large" />
           </Form.Item>
 
           <Form.Item 
             name="smtp_port" 
             label="SMTP 端口"
-            extra="SSL 使用 465，TLS 使用 587"
+            extra="Gmail/Outlook 使用 587 (TLS)，SSL 使用 465"
           >
-            <Input placeholder="465" size="large" type="number" />
+            <Input placeholder="587" size="large" type="number" />
           </Form.Item>
 
           <Form.Item 
             name="smtp_user" 
             label="发件邮箱"
           >
-            <Input placeholder="your-email@qq.com" size="large" />
+            <Input placeholder="your-email@gmail.com" size="large" />
           </Form.Item>
 
           <Form.Item 
             name="smtp_password" 
-            label="邮箱授权码"
-            extra="QQ邮箱需要在设置中开启SMTP并获取授权码"
+            label="邮箱应用密码"
+            extra="Gmail 需要在 Google 账户中生成应用专用密码"
           >
-            <Input.Password placeholder="邮箱授权码（非登录密码）" size="large" />
+            <Input.Password placeholder="应用专用密码（非登录密码）" size="large" />
           </Form.Item>
 
           <Form.Item 
