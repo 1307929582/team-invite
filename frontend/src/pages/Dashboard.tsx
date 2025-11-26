@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Table, Spin, Tag, Button, Progress, Alert } from 'antd'
-import { TeamOutlined, UserOutlined, MailOutlined, RightOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { Row, Col, Card, Table, Spin, Tag, Progress, Button } from 'antd'
+import { TeamOutlined, UserOutlined, MailOutlined, RightOutlined } from '@ant-design/icons'
 import { dashboardApi, teamApi } from '../api'
 import { useStore } from '../store'
 import dayjs from 'dayjs'
@@ -105,39 +105,6 @@ export default function Dashboard() {
     fetchData()
   }, [setTeams])
 
-  // 检查预警
-  const warnings: { type: 'error' | 'warning'; message: string; team?: string }[] = []
-  
-  // 超员阈值（默认 5 人）
-  const memberLimit = 5
-  
-  teamList.forEach(team => {
-    // 超员预警：超过限制人数
-    if (team.member_count > memberLimit) {
-      warnings.push({ 
-        type: 'error', 
-        message: `成员超限！当前 ${team.member_count} 人，超过 ${memberLimit} 人限制，有封号风险！`, 
-        team: team.name 
-      })
-    } else if (team.member_count === memberLimit) {
-      warnings.push({ 
-        type: 'warning', 
-        message: `成员已达上限 ${team.member_count} 人，请勿再邀请`, 
-        team: team.name 
-      })
-    }
-    
-    // Token 过期预警
-    if (team.token_expires_at) {
-      const daysLeft = dayjs(team.token_expires_at).diff(dayjs(), 'day')
-      if (daysLeft <= 0) {
-        warnings.push({ type: 'error', message: 'Token 已过期', team: team.name })
-      } else if (daysLeft <= 7) {
-        warnings.push({ type: 'warning', message: `Token 将在 ${daysLeft} 天后过期`, team: team.name })
-      }
-    }
-  })
-
   const logColumns = [
     { 
       title: '时间', 
@@ -189,27 +156,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* 预警信息 */}
-      {warnings.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          {warnings.map((w, i) => (
-            <Alert
-              key={i}
-              type={w.type}
-              message={<span><strong>{w.team}</strong>: {w.message}</span>}
-              icon={w.type === 'error' ? <ExclamationCircleOutlined /> : <WarningOutlined />}
-              showIcon
-              style={{ marginBottom: 8 }}
-              action={
-                <Button size="small" type="link" onClick={() => navigate('/admin/teams')}>
-                  查看
-                </Button>
-              }
-            />
-          ))}
-        </div>
-      )}
-      
       {/* 统计卡片 */}
       <Row gutter={20} style={{ marginBottom: 28 }}>
         <Col span={6}>

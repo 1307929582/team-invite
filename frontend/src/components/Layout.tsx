@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout as AntLayout, Menu, Avatar, Dropdown } from 'antd'
+import { Layout as AntLayout, Menu, Avatar, Dropdown, Badge, Popover, List, Button, Empty, Tag } from 'antd'
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -16,8 +16,22 @@ import {
   UnorderedListOutlined,
   SunOutlined,
   MoonOutlined,
+  BellOutlined,
+  WarningOutlined,
+  ExclamationCircleOutlined,
+  CloseOutlined,
 } from '@ant-design/icons'
 import { useStore } from '../store'
+import { teamApi } from '../api'
+import dayjs from 'dayjs'
+
+interface Warning {
+  id: string
+  type: 'error' | 'warning'
+  message: string
+  team?: string
+  teamId?: number
+}
 
 const { Header, Sider, Content } = AntLayout
 
@@ -36,9 +50,93 @@ const menuItems = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
+  const [warnings, setWarnings] = useState<Warning[]>([])
+  const [dismissedWarnings, setDismissedWarnings] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dismissedWarnings')
+    return saved ? JSON.parse(saved) : []
+  })
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout, theme, toggleTheme } = useStore()
+  const { user, logout, theme, toggleTheme, teams, setTeams } = useStore()
+
+  // 获取 Teams 并检查预警
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const res: any = await teamApi.list()
+        setTeams(res.teams)
+      } catch (e) {
+        console.error('Failed to fetch teams:', e)
+      }
+    }
+    fetchTeams()
+  }, [setTeams])
+
+  // 检查预警
+  useEffect(() => {
+    const memberLimit = 5
+    const newWarnings: Warning[] = []
+    
+    teams.forEach(team => {
+      // 超员预警
+      if (team.member_count > memberLimit) {
+        newWarnings.push({
+          id: `overmember-${team.id}`,
+          type: 'error',
+          message: `成员超限！当前 ${team.member_count} 人，超过 ${memberLimit} 人限制，有封号风险！`,
+          team: team.name,
+          teamId: team.id,
+        })
+      } else if (team.member_count === memberLimit) {
+        newWarnings.push({
+          id: `atlimit-${team.id}`,
+          type: 'warning',
+          message: `成员已达上限 ${team.member_count} 人，请勿再邀请`,
+          team: team.name,
+          teamId: team.id,
+        })
+      }
+      
+      // Token 过期预警
+      if (team.token_expires_at) {
+        const daysLeft = dayjs(team.token_expires_at).diff(dayjs(), 'day')
+        if (daysLeft <= 0) {
+          newWarnings.push({
+            id: `token-expired-${team.id}`,
+            type: 'error',
+            message: 'Token 已过期',
+            team: team.name,
+            teamId: team.id,
+          })
+        } else if (daysLeft <= 7) {
+          newWarnings.push({
+            id: `token-expiring-${team.id}`,
+            type: 'warning',
+            message: `Token 将在 ${daysLeft} 天后过期`,
+            team: team.name,
+            teamId: team.id,
+          })
+        }
+      }
+    })
+    
+    setWarnings(newWarnings)
+  }, [teams])
+
+  // 过滤掉已消除的警告
+  const activeWarnings = warnings.filter(w => !dismissedWarnings.includes(w.id))
+
+  const dismissWarning = (id: string) => {
+    const newDismissed = [...dismissedWarnings, id]
+    setDismissedWarnings(newDismissed)
+    localStorage.setItem('dismissedWarnings', JSON.stringify(newDismissed))
+  }
+
+  const dismissAllWarnings = () => {
+    const allIds = warnings.map(w => w.id)
+    setDismissedWarnings(allIds)
+    localStorage.setItem('dismissedWarnings', JSON.stringify(allIds))
+  }
 
   const handleLogout = () => {
     logout()
@@ -193,6 +291,102 @@ export default function Layout() {
             {collapsed ? <MenuUnfoldOutlined style={{ fontSize: 15 }} /> : <MenuFoldOutlined style={{ fontSize: 15 }} />}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* 预警按钮 */}
+            <Popover
+              placement="bottomRight"
+              trigger="click"
+              title={
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>系统预警</span>
+                  {activeWarnings.length > 0 && (
+                    <Button type="link" size="small" onClick={dismissAllWarnings} style={{ padding: 0 }}>
+                      全部已读
+                    </Button>
+                  )}
+                </div>
+              }
+              content={
+                <div style={{ width: 320, maxHeight: 400, overflow: 'auto' }}>
+                  {activeWarnings.length === 0 ? (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无预警" />
+                  ) : (
+                    <List
+                      size="small"
+                      dataSource={activeWarnings}
+                      renderItem={item => (
+                        <List.Item
+                          style={{ 
+                            padding: '12px 0',
+                            background: item.type === 'error' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)',
+                            borderRadius: 8,
+                            marginBottom: 8,
+                            paddingLeft: 12,
+                            paddingRight: 8,
+                          }}
+                          actions={[
+                            <Button 
+                              type="text" 
+                              size="small" 
+                              icon={<CloseOutlined />}
+                              onClick={() => dismissWarning(item.id)}
+                              style={{ color: '#94a3b8' }}
+                            />
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              item.type === 'error' 
+                                ? <ExclamationCircleOutlined style={{ color: '#ef4444', fontSize: 18 }} />
+                                : <WarningOutlined style={{ color: '#f59e0b', fontSize: 18 }} />
+                            }
+                            title={
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Tag color={item.type === 'error' ? 'red' : 'orange'} style={{ margin: 0 }}>
+                                  {item.team}
+                                </Tag>
+                              </div>
+                            }
+                            description={
+                              <span 
+                                style={{ fontSize: 13, color: '#64748b', cursor: 'pointer' }}
+                                onClick={() => item.teamId && navigate(`/admin/teams/${item.teamId}`)}
+                              >
+                                {item.message}
+                              </span>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  )}
+                </div>
+              }
+            >
+              <Badge count={activeWarnings.length} size="small" offset={[-2, 2]}>
+                <div 
+                  style={{ 
+                    cursor: 'pointer', 
+                    color: activeWarnings.length > 0 ? '#f59e0b' : '#64748b',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 6,
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent'
+                  }}
+                >
+                  <BellOutlined style={{ fontSize: 16 }} />
+                </div>
+              </Badge>
+            </Popover>
+
             <div 
               onClick={toggleTheme}
               style={{ 
