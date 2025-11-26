@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Team, TeamMember, User
+from app.models import Team, TeamMember, User, TeamGroup
 from app.schemas import (
     TeamCreate, TeamUpdate, TeamResponse, TeamListResponse,
     TeamMemberResponse, TeamMemberListResponse, MessageResponse
@@ -22,11 +22,20 @@ async def list_teams(
     """获取所有 Team 列表"""
     teams = db.query(Team).filter(Team.is_active == True).all()
     
+    # 获取分组名称映射
+    group_ids = [t.group_id for t in teams if t.group_id]
+    groups = {}
+    if group_ids:
+        group_list = db.query(TeamGroup).filter(TeamGroup.id.in_(group_ids)).all()
+        groups = {g.id: g.name for g in group_list}
+    
     result = []
     for team in teams:
         member_count = db.query(TeamMember).filter(TeamMember.team_id == team.id).count()
         team_dict = TeamResponse.model_validate(team).model_dump()
         team_dict["member_count"] = member_count
+        team_dict["group_id"] = team.group_id
+        team_dict["group_name"] = groups.get(team.group_id) if team.group_id else None
         result.append(TeamResponse(**team_dict))
     
     return TeamListResponse(teams=result, total=len(result))

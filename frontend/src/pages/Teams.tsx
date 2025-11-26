@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfirm, Tooltip } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Select } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined, SafetyOutlined, EyeOutlined } from '@ant-design/icons'
-import { teamApi } from '../api'
+import { teamApi, groupApi } from '../api'
 import { useStore } from '../store'
 import dayjs from 'dayjs'
 
@@ -15,7 +15,15 @@ type Team = {
   account_id: string
   is_active: boolean
   member_count: number
+  group_id?: number
+  group_name?: string
   created_at: string
+}
+
+type Group = {
+  id: number
+  name: string
+  color: string
 }
 
 export default function Teams() {
@@ -23,6 +31,7 @@ export default function Teams() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [syncing, setSyncing] = useState<number | null>(null)
+  const [groups, setGroups] = useState<Group[]>([])
   const [form] = Form.useForm()
   const navigate = useNavigate()
   const { teams, setTeams } = useStore()
@@ -37,10 +46,17 @@ export default function Teams() {
     }
   }
 
-  useEffect(() => { fetchTeams() }, [])
+  const fetchGroups = async () => {
+    try {
+      const res: any = await groupApi.list()
+      setGroups(res)
+    } catch {}
+  }
+
+  useEffect(() => { fetchTeams(); fetchGroups() }, [])
 
   const handleCreate = () => { setEditingTeam(null); form.resetFields(); setModalOpen(true) }
-  const handleEdit = (team: Team) => { setEditingTeam(team); form.setFieldsValue(team); setModalOpen(true) }
+  const handleEdit = (team: Team) => { setEditingTeam(team); form.setFieldsValue({ ...team, group_id: team.group_id }); setModalOpen(true) }
   const handleDelete = async (id: number) => { await teamApi.delete(id); message.success('删除成功'); fetchTeams() }
   
   const handleVerify = async (id: number) => { 
@@ -83,20 +99,28 @@ export default function Teams() {
         <a onClick={() => navigate(`/admin/teams/${r.id}`)} style={{ fontWeight: 600, color: '#1a1a2e' }}>{v}</a>
       )
     },
+    {
+      title: '分组',
+      dataIndex: 'group_name',
+      width: 100,
+      render: (v: string, r: Team) => v ? (
+        <Tag color={groups.find(g => g.id === r.group_id)?.color}>{v}</Tag>
+      ) : <span style={{ color: '#94a3b8' }}>未分组</span>
+    },
     { 
       title: 'Account ID', 
       dataIndex: 'account_id', 
-      width: 160, 
+      width: 140, 
       render: (v: string) => (
         <Tooltip title={v}>
-          <code style={{ cursor: 'pointer' }}>{v?.slice(0, 12)}...</code>
+          <code style={{ cursor: 'pointer' }}>{v?.slice(0, 10)}...</code>
         </Tooltip>
       )
     },
     { 
       title: '成员', 
       dataIndex: 'member_count', 
-      width: 90, 
+      width: 80, 
       render: (v: number) => <Tag color="blue">{v} 人</Tag>
     },
     { 
@@ -175,6 +199,15 @@ export default function Teams() {
           </Form.Item>
           <Form.Item name="description" label="描述">
             <TextArea rows={2} placeholder="Team 描述（可选）" />
+          </Form.Item>
+          <Form.Item name="group_id" label="所属分组" extra="选择分组后，该分组的邀请码只会分配到此 Team">
+            <Select placeholder="选择分组（可选）" allowClear>
+              {groups.map(g => (
+                <Select.Option key={g.id} value={g.id}>
+                  <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item 
             name="account_id" 

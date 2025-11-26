@@ -47,6 +47,7 @@ class TeamCreate(BaseModel):
     session_token: str
     device_id: Optional[str] = None
     cookie: Optional[str] = None
+    group_id: Optional[int] = None
 
 
 class TeamUpdate(BaseModel):
@@ -56,6 +57,7 @@ class TeamUpdate(BaseModel):
     device_id: Optional[str] = None
     cookie: Optional[str] = None
     is_active: Optional[bool] = None
+    group_id: Optional[int] = None
 
 
 class TeamResponse(BaseModel):
@@ -67,6 +69,8 @@ class TeamResponse(BaseModel):
     token_expires_at: Optional[datetime]
     created_at: datetime
     member_count: Optional[int] = 0
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
     
     class Config:
         from_attributes = True
