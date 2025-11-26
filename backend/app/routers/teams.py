@@ -164,6 +164,8 @@ async def sync_team_members(
     current_user: User = Depends(get_current_user)
 ):
     """从 ChatGPT 同步成员列表"""
+    from app.models import InviteRecord, InviteStatus
+    
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
@@ -175,11 +177,29 @@ async def sync_team_members(
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"同步失败: {e.message}")
     
-    # 清除旧数据
+    # 获取成员邮箱列表
+    from datetime import datetime
+    member_emails = set()
+    for m in members_data:
+        email = m.get("email", "").lower().strip()
+        if email:
+            member_emails.add(email)
+    
+    # 更新邀请记录：如果邮箱已在成员列表中，标记为已接受
+    pending_invites = db.query(InviteRecord).filter(
+        InviteRecord.team_id == team_id,
+        InviteRecord.status == InviteStatus.SUCCESS,
+        InviteRecord.accepted_at == None
+    ).all()
+    
+    for invite in pending_invites:
+        if invite.email.lower().strip() in member_emails:
+            invite.accepted_at = datetime.utcnow()
+    
+    # 清除旧成员数据
     db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
     
-    # 插入新数据
-    from datetime import datetime
+    # 插入新成员数据
     for m in members_data:
         member = TeamMember(
             team_id=team_id,
