@@ -266,19 +266,6 @@ async def use_redeem_code(data: RedeemRequest, db: Session = Depends(get_db)):
             detail="尝试次数过多，请5分钟后再试"
         )
     
-    # 检查用户是否已有邀请
-    existing_invite = db.query(InviteRecord).filter(
-        InviteRecord.linuxdo_user_id == user.id,
-        InviteRecord.status == InviteStatus.SUCCESS
-    ).first()
-    
-    if existing_invite:
-        team = db.query(Team).filter(Team.id == existing_invite.team_id).first()
-        raise HTTPException(
-            status_code=400, 
-            detail=f"您已加入 {team.name if team else 'Team'}，无需重复申请"
-        )
-    
     # 验证兑换码（加锁防止并发）
     code = db.query(RedeemCode).filter(
         RedeemCode.code == data.redeem_code.strip().upper(),
@@ -406,15 +393,6 @@ async def direct_redeem(data: DirectRedeemRequest, db: Session = Depends(get_db)
     
     if code.used_count >= code.max_uses:
         raise HTTPException(status_code=400, detail="兑换码已用完")
-    
-    # 检查邮箱是否已被邀请
-    existing_invite = db.query(InviteRecord).filter(
-        InviteRecord.email == data.email.lower().strip(),
-        InviteRecord.status == InviteStatus.SUCCESS
-    ).first()
-    
-    if existing_invite:
-        raise HTTPException(status_code=400, detail="该邮箱已被邀请过")
     
     # 查找有空位的 Team（加锁防止并发超额）
     teams = db.query(Team).filter(Team.is_active == True).with_for_update().all()
