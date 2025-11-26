@@ -185,6 +185,8 @@ async def sync_team_members(
         if email:
             member_emails.add(email)
     
+    print(f"[Sync] Team {team.name}: 成员邮箱列表 = {member_emails}")
+    
     # 更新邀请记录：如果邮箱已在成员列表中，标记为已接受
     pending_invites = db.query(InviteRecord).filter(
         InviteRecord.team_id == team_id,
@@ -192,9 +194,17 @@ async def sync_team_members(
         InviteRecord.accepted_at == None
     ).all()
     
+    print(f"[Sync] Team {team.name}: 待接受邀请 = {[(i.id, i.email) for i in pending_invites]}")
+    
+    updated_count = 0
     for invite in pending_invites:
-        if invite.email.lower().strip() in member_emails:
+        invite_email = invite.email.lower().strip()
+        print(f"[Sync] 检查邀请 {invite.id}: '{invite_email}' in member_emails = {invite_email in member_emails}")
+        if invite_email in member_emails:
             invite.accepted_at = datetime.utcnow()
+            updated_count += 1
+    
+    print(f"[Sync] Team {team.name}: 更新了 {updated_count} 条邀请记录")
     
     # 清除旧成员数据
     db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
