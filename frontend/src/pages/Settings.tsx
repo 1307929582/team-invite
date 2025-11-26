@@ -39,15 +39,24 @@ export default function Settings() {
     const values = await form.validateFields()
     setSaving(true)
     try {
-      const configs = Object.entries(values).map(([key, value]) => ({
-        key,
-        value: (value as string) || '',
-      }))
+      const configs = Object.entries(values)
+        .filter(([_, value]) => value !== undefined)
+        .map(([key, value]) => ({
+          key,
+          value: String(value || ''),
+          description: null,
+        }))
+      console.log('Saving configs:', configs)
       await configApi.batchUpdate(configs)
       message.success('配置已保存')
     } catch (e: any) {
       console.error('Save config error:', e)
-      message.error(e.response?.data?.detail || '保存失败，请重试')
+      const detail = e.response?.data?.detail
+      if (Array.isArray(detail)) {
+        message.error(detail.map((d: any) => d.msg).join(', '))
+      } else {
+        message.error(detail || '保存失败，请重试')
+      }
     } finally {
       setSaving(false)
     }
