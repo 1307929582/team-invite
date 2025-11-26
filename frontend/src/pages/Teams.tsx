@@ -15,6 +15,7 @@ type Team = {
   account_id: string
   is_active: boolean
   member_count: number
+  max_seats: number
   group_id?: number
   group_name?: string
   created_at: string
