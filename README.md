@@ -23,8 +23,8 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/github/license/你的用户名/chatgpt-team-manager?style=flat-square" alt="License">
-  <img src="https://img.shields.io/github/stars/你的用户名/chatgpt-team-manager?style=flat-square" alt="Stars">
+  <img src="https://img.shields.io/github/license/1307929582/team-invite?style=flat-square" alt="License">
+  <img src="https://img.shields.io/github/stars/1307929582/team-invite?style=flat-square" alt="Stars">
 </p>
 
 </div>
@@ -65,8 +65,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/你的用户名/chatgpt-team-manager.git
-cd chatgpt-team-manager
+git clone https://github.com/1307929582/team-invite.git
+cd team-invite
 
 # 2. 启动服务
 docker-compose up -d --build
