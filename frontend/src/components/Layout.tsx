@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout as AntLayout, Menu, Avatar, Dropdown, Space } from 'antd'
+import { Layout as AntLayout, Menu, Avatar, Dropdown } from 'antd'
 import {
   DashboardOutlined,
   TeamOutlined,

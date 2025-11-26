@@ -8,7 +8,7 @@ import dayjs from 'dayjs'
 
 const { TextArea } = Input
 
-interface Team {
+type Team = {
   id: number
   name: string
   description?: string
@@ -31,7 +31,7 @@ export default function Teams() {
     setLoading(true)
     try {
       const res: any = await teamApi.list()
-      setTeams(res.teams)
+      setTeams(res.teams as Team[])
     } finally {
       setLoading(false)
     }

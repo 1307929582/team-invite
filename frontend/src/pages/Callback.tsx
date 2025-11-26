@@ -25,7 +25,7 @@ export default function Callback() {
     }
 
     // 换取用户信息
-    publicApi.linuxdoCallback(code, state)
+    publicApi.linuxdoCallback(code, state || '')
       .then((res: any) => {
         localStorage.setItem('linuxdo_user', JSON.stringify(res))
         localStorage.removeItem('linuxdo_state')

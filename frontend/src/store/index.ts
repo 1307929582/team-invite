@@ -11,10 +11,10 @@ interface Team {
   id: number
   name: string
   description?: string
-  organization_id: string
-  workspace_id: string
+  account_id: string
   is_active: boolean
   member_count: number
+  created_at: string
 }
 
 interface AppState {
