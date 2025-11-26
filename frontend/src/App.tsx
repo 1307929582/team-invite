@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Spin } from 'antd'
+import { Spin, ConfigProvider, theme as antTheme } from 'antd'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -46,7 +46,7 @@ function PrivateRoute({ children, initialized }: { children: React.ReactNode; in
 }
 
 function App() {
-  const { setUser } = useStore()
+  const { setUser, theme } = useStore()
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(true)
 
@@ -82,7 +82,17 @@ function App() {
     )
   }
 
+  // 应用主题到 body
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme)
+  }, [theme])
+
   return (
+    <ConfigProvider
+      theme={{
+        algorithm: theme === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
+      }}
+    >
     <BrowserRouter>
       <Routes>
         {/* 初始化设置页 */}
@@ -123,6 +133,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ConfigProvider>
   )
 }
 

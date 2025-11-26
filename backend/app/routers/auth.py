@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, UserRole
+from app.models import User, UserRole, OperationLog
 from app.schemas import Token, UserCreate, UserResponse, UserLogin
 from app.services.auth import (
     authenticate_user, 
@@ -42,7 +42,20 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    logger.info("Login success", extra={"username": user.username})
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+    logger.info("Login success", extra={"username": user.username, "client_ip": client_ip})
+    
+    # 记录登录日志
+    log = OperationLog(
+        user_id=user.id,
+        action="登录",
+        target=user.username,
+        details=f"IP: {client_ip}",
+        ip_address=client_ip
+    )
+    db.add(log)
+    db.commit()
+    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires

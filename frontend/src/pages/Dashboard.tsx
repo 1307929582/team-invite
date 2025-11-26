@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Table, Spin, Tag, Button } from 'antd'
-import { TeamOutlined, UserOutlined, MailOutlined, RightOutlined } from '@ant-design/icons'
+import { Row, Col, Card, Table, Spin, Tag, Button, Progress, Alert } from 'antd'
+import { TeamOutlined, UserOutlined, MailOutlined, RightOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { dashboardApi, teamApi } from '../api'
 import { useStore } from '../store'
 import dayjs from 'dayjs'
@@ -11,6 +11,7 @@ interface Stats {
   total_members: number
   invites_today: number
   invites_this_week: number
+  invite_trend?: { date: string; count: number }[]
 }
 
 interface Log {
@@ -21,6 +22,14 @@ interface Log {
   user_name: string
   team_name: string
   created_at: string
+}
+
+interface Team {
+  id: number
+  name: string
+  member_count: number
+  max_seats: number
+  token_expires_at?: string
 }
 
 const StatCard = ({ icon, label, value, gradient }: { icon: React.ReactNode; label: string; value: number; gradient: string }) => (
@@ -71,6 +80,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
+  const [teamList, setTeamList] = useState<Team[]>([])
   const { teams, setTeams } = useStore()
   const navigate = useNavigate()
 
@@ -85,12 +95,36 @@ export default function Dashboard() {
         setStats(statsRes)
         setLogs(logsRes.logs)
         setTeams(teamsRes.teams)
+        setTeamList(teamsRes.teams)
       } finally {
         setLoading(false)
       }
     }
     fetchData()
   }, [setTeams])
+
+  // 检查预警
+  const warnings: { type: 'error' | 'warning'; message: string; team?: string }[] = []
+  
+  teamList.forEach(team => {
+    // 座位预警：使用率超过 80%
+    const usage = team.member_count / team.max_seats
+    if (usage >= 0.9) {
+      warnings.push({ type: 'error', message: `座位即将用完 (${team.member_count}/${team.max_seats})`, team: team.name })
+    } else if (usage >= 0.8) {
+      warnings.push({ type: 'warning', message: `座位使用率较高 (${team.member_count}/${team.max_seats})`, team: team.name })
+    }
+    
+    // Token 过期预警
+    if (team.token_expires_at) {
+      const daysLeft = dayjs(team.token_expires_at).diff(dayjs(), 'day')
+      if (daysLeft <= 0) {
+        warnings.push({ type: 'error', message: 'Token 已过期', team: team.name })
+      } else if (daysLeft <= 7) {
+        warnings.push({ type: 'warning', message: `Token 将在 ${daysLeft} 天后过期`, team: team.name })
+      }
+    }
+  })
 
   const logColumns = [
     { 
@@ -129,6 +163,11 @@ export default function Dashboard() {
     )
   }
 
+  // 计算总座位使用率
+  const totalSeats = teamList.reduce((sum, t) => sum + t.max_seats, 0)
+  const usedSeats = teamList.reduce((sum, t) => sum + t.member_count, 0)
+  const seatUsagePercent = totalSeats > 0 ? Math.round((usedSeats / totalSeats) * 100) : 0
+
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
@@ -137,10 +176,31 @@ export default function Dashboard() {
           欢迎使用 ZenscaleAI Team 管理平台
         </p>
       </div>
+
+      {/* 预警信息 */}
+      {warnings.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          {warnings.map((w, i) => (
+            <Alert
+              key={i}
+              type={w.type}
+              message={<span><strong>{w.team}</strong>: {w.message}</span>}
+              icon={w.type === 'error' ? <ExclamationCircleOutlined /> : <WarningOutlined />}
+              showIcon
+              style={{ marginBottom: 8 }}
+              action={
+                <Button size="small" type="link" onClick={() => navigate('/admin/teams')}>
+                  查看
+                </Button>
+              }
+            />
+          ))}
+        </div>
+      )}
       
       {/* 统计卡片 */}
       <Row gutter={20} style={{ marginBottom: 28 }}>
-        <Col span={8}>
+        <Col span={6}>
           <StatCard 
             icon={<TeamOutlined />} 
             label="管理 Teams" 
@@ -148,7 +208,7 @@ export default function Dashboard() {
             gradient="linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)"
           />
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <StatCard 
             icon={<UserOutlined />} 
             label="总成员数" 
@@ -156,7 +216,15 @@ export default function Dashboard() {
             gradient="linear-gradient(135deg, #10b981 0%, #34d399 100%)"
           />
         </Col>
-        <Col span={8}>
+        <Col span={6}>
+          <StatCard 
+            icon={<MailOutlined />} 
+            label="今日邀请" 
+            value={stats?.invites_today || 0} 
+            gradient="linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)"
+          />
+        </Col>
+        <Col span={6}>
           <StatCard 
             icon={<MailOutlined />} 
             label="本周邀请" 
@@ -166,9 +234,60 @@ export default function Dashboard() {
         </Col>
       </Row>
 
+      {/* 座位使用率 + 邀请趋势 */}
+      <Row gutter={20} style={{ marginBottom: 20 }}>
+        <Col span={8}>
+          <Card title="总座位使用率" size="small">
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <Progress 
+                type="dashboard" 
+                percent={seatUsagePercent} 
+                strokeColor={seatUsagePercent >= 90 ? '#ef4444' : seatUsagePercent >= 70 ? '#f59e0b' : '#10b981'}
+                format={percent => (
+                  <div>
+                    <div style={{ fontSize: 28, fontWeight: 700 }}>{percent}%</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{usedSeats}/{totalSeats}</div>
+                  </div>
+                )}
+              />
+            </div>
+          </Card>
+        </Col>
+        <Col span={16}>
+          <Card title="近7天邀请趋势" size="small">
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120, padding: '10px 0' }}>
+              {(stats?.invite_trend || []).map((item, i) => {
+                const maxCount = Math.max(...(stats?.invite_trend || []).map(t => t.count), 1)
+                const height = (item.count / maxCount) * 100
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>{item.count}</div>
+                    <div 
+                      style={{ 
+                        width: '100%', 
+                        height: `${Math.max(height, 4)}%`, 
+                        background: 'linear-gradient(180deg, #8b5cf6 0%, #a78bfa 100%)',
+                        borderRadius: 4,
+                        minHeight: 4,
+                      }} 
+                    />
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                      {dayjs(item.date).format('MM/DD')}
+                    </div>
+                  </div>
+                )
+              })}
+              {(!stats?.invite_trend || stats.invite_trend.length === 0) && (
+                <div style={{ flex: 1, textAlign: 'center', color: '#94a3b8' }}>暂无数据</div>
+              )}
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Team 列表 */}
       <Card 
-        title="Team 列表" 
+        title="Team 座位情况" 
         size="small"
         extra={
           <Button type="link" size="small" onClick={() => navigate('/admin/teams')} style={{ color: '#64748b' }}>
@@ -178,35 +297,40 @@ export default function Dashboard() {
         style={{ marginBottom: 20 }}
       >
         <Row gutter={16}>
-          {teams.slice(0, 4).map(team => (
-            <Col span={6} key={team.id}>
-              <div 
-                onClick={() => navigate(`/admin/teams/${team.id}`)}
-                style={{ 
-                  padding: 20, 
-                  background: 'rgba(255, 255, 255, 0.5)', 
-                  borderRadius: 14, 
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  border: '1px solid rgba(0, 0, 0, 0.04)',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
-                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
-                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.04)'
-                }}
-              >
-                <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e' }}>{team.name}</div>
-                <div style={{ color: '#64748b', fontSize: 13 }}>
-                  <UserOutlined style={{ marginRight: 6 }} />
-                  {team.member_count} 成员
+          {teams.slice(0, 4).map(team => {
+            const usage = Math.round((team.member_count / team.max_seats) * 100)
+            return (
+              <Col span={6} key={team.id}>
+                <div 
+                  onClick={() => navigate(`/admin/teams/${team.id}`)}
+                  style={{ 
+                    padding: 20, 
+                    background: 'rgba(255, 255, 255, 0.5)', 
+                    borderRadius: 14, 
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: '1px solid rgba(0, 0, 0, 0.04)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
+                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
+                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e' }}>{team.name}</div>
+                  <Progress 
+                    percent={usage} 
+                    size="small" 
+                    strokeColor={usage >= 90 ? '#ef4444' : usage >= 70 ? '#f59e0b' : '#10b981'}
+                    format={() => `${team.member_count}/${team.max_seats}`}
+                  />
                 </div>
-              </div>
-            </Col>
-          ))}
+              </Col>
+            )
+          })}
           {teams.length === 0 && (
             <Col span={24}>
               <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>

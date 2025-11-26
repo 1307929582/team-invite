@@ -46,6 +46,7 @@ export default function DirectCodes() {
   const [recordsModal, setRecordsModal] = useState(false)
   const [records, setRecords] = useState<InviteRecord[]>([])
   const [currentCode, setCurrentCode] = useState('')
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
   const [form] = Form.useForm()
 
   const fetchCodes = async () => {
@@ -121,6 +122,29 @@ export default function DirectCodes() {
       setRecords(res.records)
       setRecordsModal(true)
     } catch {}
+  }
+
+  // 批量删除
+  const handleBatchDelete = async () => {
+    for (const id of selectedRowKeys) {
+      await redeemApi.delete(id)
+    }
+    message.success(`成功删除 ${selectedRowKeys.length} 个链接`)
+    setSelectedRowKeys([])
+    fetchCodes()
+  }
+
+  // 批量禁用
+  const handleBatchDisable = async () => {
+    for (const id of selectedRowKeys) {
+      const code = codes.find(c => c.id === id)
+      if (code?.is_active) {
+        await redeemApi.toggle(id)
+      }
+    }
+    message.success(`已禁用 ${selectedRowKeys.length} 个链接`)
+    setSelectedRowKeys([])
+    fetchCodes()
   }
 
   const getInviteUrl = (code: string) => `${window.location.origin}/invite/${code}`
@@ -205,15 +229,36 @@ export default function DirectCodes() {
       </div>
 
       <Card bodyStyle={{ padding: 0 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Radio.Group value={filter} onChange={e => setFilter(e.target.value)} buttonStyle="solid">
             <Radio.Button value="all">全部 ({stats.all})</Radio.Button>
             <Radio.Button value="available">可用 ({stats.available})</Radio.Button>
             <Radio.Button value="used">已用完 ({stats.used})</Radio.Button>
             <Radio.Button value="expired">已过期 ({stats.expired})</Radio.Button>
           </Radio.Group>
+          {selectedRowKeys.length > 0 && (
+            <Space>
+              <span style={{ color: '#64748b' }}>已选 {selectedRowKeys.length} 项</span>
+              <Popconfirm title={`确定禁用 ${selectedRowKeys.length} 个链接？`} onConfirm={handleBatchDisable} okText="禁用" cancelText="取消">
+                <Button size="small" icon={<StopOutlined />}>批量禁用</Button>
+              </Popconfirm>
+              <Popconfirm title={`确定删除 ${selectedRowKeys.length} 个链接？`} onConfirm={handleBatchDelete} okText="删除" cancelText="取消">
+                <Button size="small" danger icon={<DeleteOutlined />}>批量删除</Button>
+              </Popconfirm>
+            </Space>
+          )}
         </div>
-        <Table dataSource={filteredCodes} columns={columns} rowKey="id" loading={loading} pagination={{ pageSize: 15, showTotal: total => `共 ${total} 个` }} />
+        <Table 
+          dataSource={filteredCodes} 
+          columns={columns} 
+          rowKey="id" 
+          loading={loading} 
+          pagination={{ pageSize: 15, showTotal: total => `共 ${total} 个` }}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
+        />
       </Card>
 
       <Modal title="生成直接邀请链接" open={modalOpen} onOk={handleCreate} onCancel={() => setModalOpen(false)} width={520} okText="生成" cancelText="取消" confirmLoading={creating}>

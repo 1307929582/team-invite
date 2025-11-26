@@ -31,7 +31,7 @@ class SeatStatsResponse(BaseModel):
     teams: List[TeamSeatInfo]
 
 
-@router.get("/stats", response_model=DashboardStats)
+@router.get("/stats")
 async def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -58,13 +58,23 @@ async def get_dashboard_stats(
         InviteRecord.created_at >= week_ago
     ).count()
     
-    return DashboardStats(
-        total_teams=total_teams,
-        total_members=total_members,
-        invites_today=invites_today,
-        invites_this_week=invites_this_week,
-        active_teams=active_teams
-    )
+    # 近7天邀请趋势
+    invite_trend = []
+    for i in range(6, -1, -1):
+        date = (datetime.utcnow() - timedelta(days=i)).date()
+        count = db.query(InviteRecord).filter(
+            func.date(InviteRecord.created_at) == date
+        ).count()
+        invite_trend.append({"date": date.isoformat(), "count": count})
+    
+    return {
+        "total_teams": total_teams,
+        "total_members": total_members,
+        "invites_today": invites_today,
+        "invites_this_week": invites_this_week,
+        "active_teams": active_teams,
+        "invite_trend": invite_trend
+    }
 
 
 @router.get("/seats", response_model=SeatStatsResponse)

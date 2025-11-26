@@ -14,6 +14,8 @@ import {
   SettingOutlined,
   AppstoreOutlined,
   UnorderedListOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from '@ant-design/icons'
 import { useStore } from '../store'
 
@@ -36,7 +38,7 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout } = useStore()
+  const { user, logout, theme, toggleTheme } = useStore()
 
   const handleLogout = () => {
     logout()
@@ -190,22 +192,48 @@ export default function Layout() {
           >
             {collapsed ? <MenuUnfoldOutlined style={{ fontSize: 15 }} /> : <MenuFoldOutlined style={{ fontSize: 15 }} />}
           </div>
-          <Dropdown menu={userMenu} placement="bottomRight">
-            <div style={{ 
-              cursor: 'pointer', 
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '4px 10px 4px 4px', 
-              borderRadius: 20, 
-              transition: 'all 0.2s',
-              background: 'rgba(0, 0, 0, 0.03)',
-              flexShrink: 0,
-            }}>
-              <Avatar size={26} icon={<UserOutlined />} />
-              <span style={{ color: '#1a1a2e', fontSize: 13, fontWeight: 500 }}>{user?.username}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div 
+              onClick={toggleTheme}
+              style={{ 
+                cursor: 'pointer', 
+                color: '#64748b',
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 6,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'
+                e.currentTarget.style.color = '#1a1a2e'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#64748b'
+              }}
+            >
+              {theme === 'light' ? <MoonOutlined style={{ fontSize: 15 }} /> : <SunOutlined style={{ fontSize: 15 }} />}
             </div>
-          </Dropdown>
+            <Dropdown menu={userMenu} placement="bottomRight">
+              <div style={{ 
+                cursor: 'pointer', 
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 10px 4px 4px', 
+                borderRadius: 20, 
+                transition: 'all 0.2s',
+                background: 'rgba(0, 0, 0, 0.03)',
+                flexShrink: 0,
+              }}>
+                <Avatar size={26} icon={<UserOutlined />} />
+                <span style={{ color: '#1a1a2e', fontSize: 13, fontWeight: 500 }}>{user?.username}</span>
+              </div>
+            </Dropdown>
+          </div>
         </Header>
         <Content style={{ 
           margin: 24, 

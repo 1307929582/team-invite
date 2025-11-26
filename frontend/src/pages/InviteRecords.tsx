@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Input, Tag, Space, Select, Tooltip, Radio } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Card, Table, Input, Tag, Space, Select, Tooltip, Radio, Button, message } from 'antd'
+import { SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import { inviteRecordApi, teamApi, groupApi } from '../api'
 import dayjs from 'dayjs'
 
@@ -74,6 +74,32 @@ export default function InviteRecords() {
 
   const handleSearch = () => {
     fetchRecords()
+  }
+
+  // 导出 CSV
+  const exportCSV = () => {
+    const headers = ['邮箱', 'Team', '分组', '邀请码', 'LinuxDO用户', '发送状态', '接受状态', '邀请时间', '接受时间']
+    const rows = filteredRecords.map(r => [
+      r.email,
+      r.team_name || '',
+      r.group_name || '',
+      r.redeem_code || '手动邀请',
+      r.linuxdo_username || '',
+      r.status === 'success' ? '已发送' : r.status === 'pending' ? '待处理' : '失败',
+      r.accepted_at ? '已接受' : '待接受',
+      dayjs(r.created_at).format('YYYY-MM-DD HH:mm:ss'),
+      r.accepted_at ? dayjs(r.accepted_at).format('YYYY-MM-DD HH:mm:ss') : ''
+    ])
+    
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `邀请记录_${dayjs().format('YYYYMMDD_HHmmss')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    message.success('导出成功')
   }
 
   // 根据筛选条件过滤
@@ -206,6 +232,7 @@ export default function InviteRecords() {
             style={{ width: 200 }}
             allowClear
           />
+          <Button icon={<DownloadOutlined />} onClick={exportCSV}>导出 CSV</Button>
         </Space>
       </div>
 
