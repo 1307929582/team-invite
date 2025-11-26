@@ -53,8 +53,11 @@ async def create_team(
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"Token 验证失败: {e.message}")
     
-    # 检查是否已存在
-    existing = db.query(Team).filter(Team.account_id == clean_data["account_id"]).first()
+    # 检查是否已存在（只检查活跃的）
+    existing = db.query(Team).filter(
+        Team.account_id == clean_data["account_id"],
+        Team.is_active == True
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="该 Account 已存在")
     
