@@ -90,13 +90,69 @@ async def sync_all_teams():
         db.close()
 
 
+async def check_and_send_alerts():
+    """检查预警并发送邮件"""
+    from app.models import Team, TeamMember
+    from app.services.email import send_alert_email
+    from datetime import datetime, timedelta
+    
+    db = SessionLocal()
+    try:
+        alerts = []
+        teams_list = db.query(Team).filter(Team.is_active == True).all()
+        
+        for team in teams_list:
+            # 检查成员数量
+            member_count = db.query(TeamMember).filter(TeamMember.team_id == team.id).count()
+            
+            if member_count > 5:
+                alerts.append({
+                    "type": "error",
+                    "team": team.name,
+                    "message": f"成员超限！当前 {member_count} 人，超过 5 人限制，有封号风险！"
+                })
+            
+            # 检查 Token 过期
+            if team.token_expires_at:
+                days_left = (team.token_expires_at - datetime.utcnow()).days
+                if days_left <= 0:
+                    alerts.append({
+                        "type": "error",
+                        "team": team.name,
+                        "message": "Token 已过期，请尽快更新"
+                    })
+                elif days_left <= 7:
+                    alerts.append({
+                        "type": "warning",
+                        "team": team.name,
+                        "message": f"Token 将在 {days_left} 天后过期"
+                    })
+        
+        if alerts:
+            send_alert_email(db, alerts)
+            logger.info(f"Sent {len(alerts)} alerts via email")
+            
+    except Exception as e:
+        logger.exception("Alert check error", extra={"error": str(e)})
+    finally:
+        db.close()
+
+
 async def periodic_sync():
     """定时任务：每 5 分钟同步一次 Team 成员"""
+    alert_counter = 0  # 每小时检查一次预警
     while True:
         await asyncio.sleep(300)  # 5 分钟
         try:
             logger.info("Starting periodic sync")
             await sync_all_teams()
+            
+            # 每小时检查一次预警（12 * 5分钟 = 60分钟）
+            alert_counter += 1
+            if alert_counter >= 12:
+                await check_and_send_alerts()
+                alert_counter = 0
+            
             logger.info("Periodic sync completed")
         except Exception as e:
             logger.exception("Periodic sync error", extra={"error": str(e)})

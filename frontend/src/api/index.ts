@@ -98,6 +98,8 @@ export const configApi = {
   update: (key: string, value: string) => api.put(`/config/${key}`, { key, value }),
   batchUpdate: (configs: { key: string; value: string; description?: string | null }[]) => 
     api.post('/config/batch', configs),
+  testEmail: () => api.post('/config/test-email'),
+  checkAlerts: () => api.post('/config/check-alerts'),
 }
 
 // LinuxDO User API

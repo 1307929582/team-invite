@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card, Form, Input, Button, message, Divider, Alert } from 'antd'
-import { SaveOutlined } from '@ant-design/icons'
+import { Card, Form, Input, Button, message, Divider, Alert, Switch, Space } from 'antd'
+import { SaveOutlined, MailOutlined, SendOutlined, BellOutlined } from '@ant-design/icons'
 import { configApi } from '../api'
 
 interface ConfigItem {
@@ -12,6 +12,8 @@ interface ConfigItem {
 export default function Settings() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [checkingAlerts, setCheckingAlerts] = useState(false)
   const [form] = Form.useForm()
 
   const fetchConfigs = async () => {
@@ -43,7 +45,7 @@ export default function Settings() {
         .filter(([_, value]) => value !== undefined)
         .map(([key, value]) => ({
           key,
-          value: String(value || ''),
+          value: typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value || ''),
           description: null,
         }))
       console.log('Saving configs:', configs)
@@ -59,6 +61,34 @@ export default function Settings() {
       }
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true)
+    try {
+      await configApi.testEmail()
+      message.success('测试邮件已发送，请检查收件箱')
+    } catch (e: any) {
+      message.error(e.response?.data?.detail || '发送失败，请检查 SMTP 配置')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+  const handleCheckAlerts = async () => {
+    setCheckingAlerts(true)
+    try {
+      const res: any = await configApi.checkAlerts()
+      if (res.alerts?.length > 0) {
+        message.warning(`发现 ${res.alerts.length} 个预警，已发送邮件通知`)
+      } else {
+        message.success('检查完成，暂无预警')
+      }
+    } catch (e: any) {
+      message.error(e.response?.data?.detail || '检查失败')
+    } finally {
+      setCheckingAlerts(false)
     }
   }
 
@@ -139,16 +169,128 @@ export default function Settings() {
 
           <Divider />
 
-          <Button 
-            type="primary" 
-            icon={<SaveOutlined />} 
-            size="large"
-            loading={saving}
-            onClick={handleSave}
-            style={{ borderRadius: 10 }}
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+            <MailOutlined style={{ marginRight: 8 }} />
+            邮件通知配置
+          </h3>
+
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 20 }}
+            message="SMTP 配置说明"
+            description={
+              <div>
+                <p>配置 SMTP 后可接收超员预警、Token 过期提醒等通知</p>
+                <p>常用配置：QQ邮箱 smtp.qq.com:465 | 163邮箱 smtp.163.com:465 | Gmail smtp.gmail.com:587</p>
+              </div>
+            }
+          />
+
+          <Form.Item 
+            name="email_enabled" 
+            label="启用邮件通知"
+            valuePropName="checked"
+            getValueFromEvent={(checked) => checked}
+            getValueProps={(value) => ({ checked: value === 'true' || value === true })}
           >
-            保存配置
-          </Button>
+            <Switch checkedChildren="开启" unCheckedChildren="关闭" />
+          </Form.Item>
+
+          <Form.Item 
+            name="smtp_host" 
+            label="SMTP 服务器"
+            extra="如 smtp.qq.com、smtp.163.com"
+          >
+            <Input placeholder="smtp.qq.com" size="large" />
+          </Form.Item>
+
+          <Form.Item 
+            name="smtp_port" 
+            label="SMTP 端口"
+            extra="SSL 使用 465，TLS 使用 587"
+          >
+            <Input placeholder="465" size="large" type="number" />
+          </Form.Item>
+
+          <Form.Item 
+            name="smtp_user" 
+            label="发件邮箱"
+          >
+            <Input placeholder="your-email@qq.com" size="large" />
+          </Form.Item>
+
+          <Form.Item 
+            name="smtp_password" 
+            label="邮箱授权码"
+            extra="QQ邮箱需要在设置中开启SMTP并获取授权码"
+          >
+            <Input.Password placeholder="邮箱授权码（非登录密码）" size="large" />
+          </Form.Item>
+
+          <Form.Item 
+            name="admin_email" 
+            label="管理员邮箱"
+            extra="接收预警通知的邮箱地址"
+          >
+            <Input placeholder="admin@example.com" size="large" />
+          </Form.Item>
+
+          <Divider />
+
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+            <BellOutlined style={{ marginRight: 8 }} />
+            预警阈值设置
+          </h3>
+
+          <Form.Item 
+            name="alert_member_threshold" 
+            label="超员预警阈值"
+            extra="Team 成员超过此数量时发送预警（建议设为 5，避免封号）"
+          >
+            <Input placeholder="5" size="large" type="number" />
+          </Form.Item>
+
+          <Form.Item 
+            name="alert_token_days" 
+            label="Token 过期预警天数"
+            extra="Token 剩余天数少于此值时发送预警"
+          >
+            <Input placeholder="7" size="large" type="number" />
+          </Form.Item>
+
+          <Divider />
+
+          <Space size="middle">
+            <Button 
+              type="primary" 
+              icon={<SaveOutlined />} 
+              size="large"
+              loading={saving}
+              onClick={handleSave}
+              style={{ borderRadius: 10 }}
+            >
+              保存配置
+            </Button>
+            <Button 
+              icon={<SendOutlined />} 
+              size="large"
+              loading={testingEmail}
+              onClick={handleTestEmail}
+              style={{ borderRadius: 10 }}
+            >
+              发送测试邮件
+            </Button>
+            <Button 
+              icon={<BellOutlined />} 
+              size="large"
+              loading={checkingAlerts}
+              onClick={handleCheckAlerts}
+              style={{ borderRadius: 10 }}
+            >
+              立即检查预警
+            </Button>
+          </Space>
         </Form>
       </Card>
     </div>
