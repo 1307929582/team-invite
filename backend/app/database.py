@@ -5,13 +5,24 @@ from app.config import settings
 from app.models import Base
 import os
 
-# 确保数据目录存在
-os.makedirs("data", exist_ok=True)
+# SQLite 需要确保数据目录存在
+if settings.is_sqlite:
+    os.makedirs("data", exist_ok=True)
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args={"check_same_thread": False}  # SQLite 需要
-)
+# 根据数据库类型配置引擎
+if settings.is_sqlite:
+    engine = create_engine(
+        settings.DATABASE_URL,
+        connect_args={"check_same_thread": False}  # SQLite 需要
+    )
+else:
+    # PostgreSQL / MySQL 等
+    engine = create_engine(
+        settings.DATABASE_URL,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

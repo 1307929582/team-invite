@@ -61,20 +61,55 @@
 
 ## 🚀 快速开始
 
-### Docker 部署（推荐）
+### 一键部署（推荐）
 
 ```bash
-# 1. 克隆项目
+curl -fsSL https://raw.githubusercontent.com/1307929582/team-invite/main/install.sh | bash
+```
+
+脚本会引导你选择数据库类型（SQLite/PostgreSQL）并自动完成部署。
+
+### 手动 Docker 部署
+
+<details>
+<summary>SQLite 版本（简单）</summary>
+
+```bash
+git clone https://github.com/1307929582/team-invite.git
+cd team-invite
+docker-compose up -d --build
+```
+
+</details>
+
+<details>
+<summary>PostgreSQL 版本（生产推荐）</summary>
+
+```bash
 git clone https://github.com/1307929582/team-invite.git
 cd team-invite
 
-# 2. 启动服务
-docker-compose up -d --build
+# 创建环境变量
+cat > .env << EOF
+SECRET_KEY=$(openssl rand -hex 32)
+POSTGRES_USER=teamadmin
+POSTGRES_PASSWORD=your-secure-password
+POSTGRES_DB=team_manager
+EOF
 
-# 3. 访问系统
-# 用户端: http://localhost:3456
-# 管理后台: http://localhost:3456/admin
+# 启动服务
+docker-compose -f docker-compose.postgres.yml up -d --build
 ```
+
+</details>
+
+### 访问系统
+
+| 服务 | 地址 |
+|------|------|
+| 用户端 | http://localhost:3456 |
+| 管理后台 | http://localhost:3456/admin |
+| API 文档 | http://localhost:4567/docs |
 
 ### 本地开发
 
@@ -148,13 +183,12 @@ npm run dev
 
 ## 🔧 技术栈
 
-| 后端 | 前端 |
-|------|------|
-| FastAPI | React 18 |
-| SQLAlchemy | TypeScript |
-| SQLite | Ant Design |
-| JWT + bcrypt | Zustand |
-| httpx | Axios + Vite |
+| 后端 | 前端 | 数据库 |
+|------|------|--------|
+| FastAPI | React 18 | SQLite (默认) |
+| SQLAlchemy | TypeScript | PostgreSQL (可选) |
+| JWT + bcrypt | Ant Design | |
+| httpx | Zustand + Axios | |
 
 ## 🔒 安全特性
 

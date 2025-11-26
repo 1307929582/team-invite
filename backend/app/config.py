@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     CHATGPT_API_BASE: str = "https://chat.openai.com/backend-api"
     
     # 数据库配置
+    # 支持 SQLite 和 PostgreSQL
+    # SQLite: sqlite:///./data/app.db
+    # PostgreSQL: postgresql://user:password@localhost:5432/dbname
     DATABASE_URL: str = "sqlite:///./data/app.db"
     
     # JWT 配置
@@ -41,6 +44,11 @@ class Settings(BaseSettings):
     LINUXDO_AUTH_URL: str = "https://connect.linux.do/oauth2/authorize"
     LINUXDO_TOKEN_URL: str = "https://connect.linux.do/oauth2/token"
     LINUXDO_USER_URL: str = "https://connect.linux.do/api/user"
+    
+    @property
+    def is_sqlite(self) -> bool:
+        """判断是否使用 SQLite"""
+        return self.DATABASE_URL.startswith("sqlite")
     
     class Config:
         env_file = ".env"

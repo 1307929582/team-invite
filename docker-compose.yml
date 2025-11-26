@@ -1,3 +1,6 @@
+# 默认配置：使用 SQLite（简单部署）
+# 如需使用 PostgreSQL，请使用 docker-compose.postgres.yml
+
 services:
   backend:
     build: ./backend
@@ -18,14 +21,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-  # 可选：使用 nginx 反向代理
-  # nginx:
-  #   image: nginx:alpine
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf
-  #   depends_on:
-  #     - backend
-  #     - frontend

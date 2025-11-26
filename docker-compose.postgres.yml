@@ -1,0 +1,42 @@
+# PostgreSQL 版本配置（生产环境推荐）
+# 使用方法: docker-compose -f docker-compose.postgres.yml up -d --build
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-teamadmin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-teampassword}
+      - POSTGRES_DB=${POSTGRES_DB:-team_manager}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-teamadmin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "4567:4567"
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-teamadmin}:${POSTGRES_PASSWORD:-teampassword}@db:5432/${POSTGRES_DB:-team_manager}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3456:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
