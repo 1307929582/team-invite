@@ -23,6 +23,9 @@ export default function Settings() {
         values[c.key] = c.value || ''
       })
       form.setFieldsValue(values)
+    } catch (e: any) {
+      console.error('Fetch config error:', e)
+      message.error('获取配置失败')
     } finally {
       setLoading(false)
     }
@@ -38,11 +41,13 @@ export default function Settings() {
     try {
       const configs = Object.entries(values).map(([key, value]) => ({
         key,
-        value: value as string,
+        value: (value as string) || '',
       }))
       await configApi.batchUpdate(configs)
       message.success('配置已保存')
-    } catch {
+    } catch (e: any) {
+      console.error('Save config error:', e)
+      message.error(e.response?.data?.detail || '保存失败，请重试')
     } finally {
       setSaving(false)
     }
