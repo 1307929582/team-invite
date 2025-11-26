@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio } from 'antd'
-import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined, EyeOutlined } from '@ant-design/icons'
 import { redeemApi } from '../api'
 import dayjs from 'dayjs'
 
@@ -14,6 +14,15 @@ interface RedeemCode {
   created_at: string
 }
 
+interface InviteRecord {
+  id: number
+  email: string
+  team_name: string
+  status: string
+  created_at: string
+  accepted_at?: string
+}
+
 type FilterType = 'all' | 'available' | 'used' | 'expired'
 
 export default function RedeemCodes() {
@@ -23,6 +32,9 @@ export default function RedeemCodes() {
   const [creating, setCreating] = useState(false)
   const [newCodes, setNewCodes] = useState<string[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
+  const [recordsModal, setRecordsModal] = useState(false)
+  const [records, setRecords] = useState<InviteRecord[]>([])
+  const [currentCode, setCurrentCode] = useState('')
   const [form] = Form.useForm()
 
   const fetchCodes = async () => {
@@ -94,6 +106,15 @@ export default function RedeemCodes() {
     fetchCodes()
   }
 
+  const handleViewRecords = async (code: RedeemCode) => {
+    setCurrentCode(code.code)
+    try {
+      const res: any = await redeemApi.getRecords(code.id)
+      setRecords(res.records)
+      setRecordsModal(true)
+    } catch {}
+  }
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code)
     message.success('已复制')
@@ -122,9 +143,9 @@ export default function RedeemCodes() {
       title: '使用情况', 
       width: 100,
       render: (_: any, r: RedeemCode) => (
-        <span style={{ color: r.used_count >= r.max_uses ? '#ef4444' : '#64748b' }}>
+        <Button type="link" size="small" style={{ padding: 0, color: r.used_count >= r.max_uses ? '#ef4444' : '#64748b' }} onClick={() => handleViewRecords(r)}>
           {r.used_count} / {r.max_uses}
-        </span>
+        </Button>
       )
     },
     { 
@@ -157,9 +178,12 @@ export default function RedeemCodes() {
     },
     {
       title: '操作', 
-      width: 100,
+      width: 120,
       render: (_: any, r: RedeemCode) => (
         <Space size={4}>
+          <Tooltip title="查看记录">
+            <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => handleViewRecords(r)} />
+          </Tooltip>
           <Tooltip title={r.is_active ? '禁用' : '启用'}>
             <Button size="small" type="text" icon={r.is_active ? <StopOutlined /> : <CheckOutlined />} onClick={() => handleToggle(r.id)} />
           </Tooltip>
@@ -171,6 +195,14 @@ export default function RedeemCodes() {
         </Space>
       ),
     },
+  ]
+
+  const recordColumns = [
+    { title: '邮箱', dataIndex: 'email' },
+    { title: '加入 Team', dataIndex: 'team_name' },
+    { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'success' ? 'green' : 'default'}>{v === 'success' ? '成功' : v}</Tag> },
+    { title: '邀请时间', dataIndex: 'created_at', width: 150, render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
+    { title: '接受时间', dataIndex: 'accepted_at', width: 150, render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : <span style={{ color: '#94a3b8' }}>未接受</span> },
   ]
 
   return (
@@ -244,6 +276,10 @@ export default function RedeemCodes() {
             </Form.Item>
           </Form>
         )}
+      </Modal>
+
+      <Modal title={`使用记录 - ${currentCode}`} open={recordsModal} onCancel={() => setRecordsModal(false)} footer={null} width={700}>
+        <Table dataSource={records} columns={recordColumns} rowKey="id" pagination={false} size="small" locale={{ emptyText: '暂无使用记录' }} />
       </Modal>
     </div>
   )
