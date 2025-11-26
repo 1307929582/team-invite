@@ -50,6 +50,7 @@ function App() {
     // 先检查系统是否已初始化
     setupApi.getStatus()
       .then((res: any) => {
+        console.log('Setup status:', res)
         setInitialized(res.initialized)
         if (res.initialized) {
           // 已初始化，检查登录状态
@@ -61,7 +62,8 @@ function App() {
           }
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to get setup status:', err)
         // 获取状态失败，假设已初始化
         setInitialized(true)
       })
