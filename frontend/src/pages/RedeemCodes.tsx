@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio } from 'antd'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined } from '@ant-design/icons'
 import { redeemApi } from '../api'
 import dayjs from 'dayjs'
@@ -14,12 +14,15 @@ interface RedeemCode {
   created_at: string
 }
 
+type FilterType = 'all' | 'available' | 'used' | 'expired'
+
 export default function RedeemCodes() {
   const [codes, setCodes] = useState<RedeemCode[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newCodes, setNewCodes] = useState<string[]>([])
+  const [filter, setFilter] = useState<FilterType>('all')
   const [form] = Form.useForm()
 
   const fetchCodes = async () => {
@@ -35,6 +38,32 @@ export default function RedeemCodes() {
   useEffect(() => {
     fetchCodes()
   }, [])
+
+  // 根据筛选条件过滤
+  const filteredCodes = codes.filter(code => {
+    const isExpired = code.expires_at && dayjs(code.expires_at).isBefore(dayjs())
+    const isUsedUp = code.used_count >= code.max_uses
+    const isAvailable = code.is_active && !isExpired && !isUsedUp
+
+    switch (filter) {
+      case 'available':
+        return isAvailable
+      case 'used':
+        return isUsedUp
+      case 'expired':
+        return isExpired
+      default:
+        return true
+    }
+  })
+
+  // 统计数量
+  const stats = {
+    all: codes.length,
+    available: codes.filter(c => c.is_active && !(c.expires_at && dayjs(c.expires_at).isBefore(dayjs())) && c.used_count < c.max_uses).length,
+    used: codes.filter(c => c.used_count >= c.max_uses).length,
+    expired: codes.filter(c => c.expires_at && dayjs(c.expires_at).isBefore(dayjs())).length,
+  }
 
   const handleCreate = async () => {
     const values = await form.validateFields()
@@ -154,8 +183,16 @@ export default function RedeemCodes() {
       </div>
 
       <Card bodyStyle={{ padding: 0 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+          <Radio.Group value={filter} onChange={e => setFilter(e.target.value)} buttonStyle="solid">
+            <Radio.Button value="all">全部 ({stats.all})</Radio.Button>
+            <Radio.Button value="available">可用 ({stats.available})</Radio.Button>
+            <Radio.Button value="used">已用完 ({stats.used})</Radio.Button>
+            <Radio.Button value="expired">已过期 ({stats.expired})</Radio.Button>
+          </Radio.Group>
+        </div>
         <Table 
-          dataSource={codes} 
+          dataSource={filteredCodes} 
           columns={columns} 
           rowKey="id" 
           loading={loading} 
