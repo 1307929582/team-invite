@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Space, Tag, Descriptions, Spin, Input, message, Row, Col, Progress } from 'antd'
 import { ArrowLeftOutlined, SyncOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import { teamApi } from '../api'
+import { formatDate, formatDateOnly, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface Team { id: number; name: string; description?: string; account_id: string; is_active: boolean; member_count: number; created_at: string }
@@ -90,13 +91,13 @@ export default function TeamDetail() {
     { title: '邮箱', dataIndex: 'email', ellipsis: true },
     { title: '姓名', dataIndex: 'name', width: 140, render: (v: string) => v || '-' },
     { title: '角色', dataIndex: 'role', width: 120, render: (v: string) => <Tag color={v === 'account-owner' ? 'gold' : 'blue'}>{v === 'account-owner' ? '管理员' : '成员'}</Tag> },
-    { title: '加入时间', dataIndex: 'created_time', width: 160, render: (v: string) => v ? <span style={{ color: '#64748b' }}>{dayjs(v).format('YYYY-MM-DD HH:mm')}</span> : '-' },
+    { title: '加入时间', dataIndex: 'created_time', width: 160, render: (v: string) => v ? <span style={{ color: '#64748b' }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span> : '-' },
   ]
 
   const inviteColumns = [
     { title: '邮箱', dataIndex: 'email_address', ellipsis: true },
     { title: '角色', dataIndex: 'role', width: 100, render: (v: string) => <Tag>{v}</Tag> },
-    { title: '邀请时间', dataIndex: 'created_time', width: 160, render: (v: string) => <span style={{ color: '#64748b' }}>{dayjs(v).format('YYYY-MM-DD HH:mm')}</span> },
+    { title: '邀请时间', dataIndex: 'created_time', width: 160, render: (v: string) => <span style={{ color: '#64748b' }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span> },
   ]
 
   if (loading) {
@@ -108,7 +109,7 @@ export default function TeamDetail() {
   }
 
   const seatsPercent = subscription ? Math.round((subscription.seats_in_use / subscription.seats_entitled) * 100) : 0
-  const daysLeft = subscription ? dayjs(subscription.active_until).diff(dayjs(), 'day') : 0
+  const daysLeft = subscription ? (toLocalDate(subscription.active_until)?.diff(dayjs(), 'day') || 0) : 0
 
   return (
     <div>
@@ -161,7 +162,7 @@ export default function TeamDetail() {
           <Col span={6}>
             <InfoCard 
               label="到期时间" 
-              value={dayjs(subscription.active_until).format('YYYY-MM-DD')} 
+              value={formatDateOnly(subscription.active_until)} 
               sub={`剩余 ${daysLeft} 天`}
               danger={daysLeft < 7}
             />
@@ -181,7 +182,7 @@ export default function TeamDetail() {
         <Descriptions column={3} size="small">
           <Descriptions.Item label="Account ID"><code>{team?.account_id}</code></Descriptions.Item>
           <Descriptions.Item label="状态"><Tag color={team?.is_active ? 'green' : 'red'}>{team?.is_active ? '正常' : '禁用'}</Tag></Descriptions.Item>
-          <Descriptions.Item label="创建时间">{dayjs(team?.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+          <Descriptions.Item label="创建时间">{formatDate(team?.created_at, 'YYYY-MM-DD HH:mm')}</Descriptions.Item>
         </Descriptions>
       </Card>
 

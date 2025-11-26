@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio } from 'antd'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined, EyeOutlined } from '@ant-design/icons'
 import { redeemApi } from '../api'
+import { formatDate, formatDateOnly, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface RedeemCode {
@@ -53,8 +54,10 @@ export default function RedeemCodes() {
   }, [])
 
   // 根据筛选条件过滤
+  const isExpiredCode = (code: RedeemCode) => code.expires_at && toLocalDate(code.expires_at)?.isBefore(dayjs())
+  
   const filteredCodes = codes.filter(code => {
-    const isExpired = code.expires_at && dayjs(code.expires_at).isBefore(dayjs())
+    const isExpired = isExpiredCode(code)
     const isUsedUp = code.used_count >= code.max_uses
     const isAvailable = code.is_active && !isExpired && !isUsedUp
 
@@ -73,9 +76,9 @@ export default function RedeemCodes() {
   // 统计数量
   const stats = {
     all: codes.length,
-    available: codes.filter(c => c.is_active && !(c.expires_at && dayjs(c.expires_at).isBefore(dayjs())) && c.used_count < c.max_uses).length,
+    available: codes.filter(c => c.is_active && !isExpiredCode(c) && c.used_count < c.max_uses).length,
     used: codes.filter(c => c.used_count >= c.max_uses).length,
-    expired: codes.filter(c => c.expires_at && dayjs(c.expires_at).isBefore(dayjs())).length,
+    expired: codes.filter(c => isExpiredCode(c)).length,
   }
 
   const handleCreate = async () => {
@@ -177,8 +180,8 @@ export default function RedeemCodes() {
       dataIndex: 'expires_at', 
       width: 140,
       render: (v: string) => v ? (
-        <span style={{ color: dayjs(v).isBefore(dayjs()) ? '#ef4444' : '#64748b', fontSize: 13 }}>
-          {dayjs(v).format('YYYY-MM-DD')}
+        <span style={{ color: toLocalDate(v)?.isBefore(dayjs()) ? '#ef4444' : '#64748b', fontSize: 13 }}>
+          {formatDateOnly(v)}
         </span>
       ) : <span style={{ color: '#94a3b8' }}>永不</span>
     },
@@ -187,7 +190,7 @@ export default function RedeemCodes() {
       dataIndex: 'is_active', 
       width: 80,
       render: (v: boolean, r: RedeemCode) => {
-        const expired = r.expires_at && dayjs(r.expires_at).isBefore(dayjs())
+        const expired = isExpiredCode(r)
         const used = r.used_count >= r.max_uses
         if (expired) return <Tag color="default">已过期</Tag>
         if (used) return <Tag color="default">已用完</Tag>
@@ -198,7 +201,7 @@ export default function RedeemCodes() {
       title: '创建时间', 
       dataIndex: 'created_at', 
       width: 140,
-      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('YYYY-MM-DD HH:mm')}</span>
+      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span>
     },
     {
       title: '操作', 
@@ -225,8 +228,8 @@ export default function RedeemCodes() {
     { title: '邮箱', dataIndex: 'email' },
     { title: '加入 Team', dataIndex: 'team_name' },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'success' ? 'green' : 'default'}>{v === 'success' ? '成功' : v}</Tag> },
-    { title: '邀请时间', dataIndex: 'created_at', width: 150, render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
-    { title: '接受时间', dataIndex: 'accepted_at', width: 150, render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : <span style={{ color: '#94a3b8' }}>未接受</span> },
+    { title: '邀请时间', dataIndex: 'created_at', width: 150, render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm') },
+    { title: '接受时间', dataIndex: 'accepted_at', width: 150, render: (v: string) => v ? formatDate(v, 'YYYY-MM-DD HH:mm') : <span style={{ color: '#94a3b8' }}>未接受</span> },
   ]
 
   return (

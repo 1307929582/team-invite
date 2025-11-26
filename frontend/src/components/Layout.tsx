@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { useStore } from '../store'
 import { teamApi } from '../api'
+import { toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface Warning {
@@ -99,7 +100,8 @@ export default function Layout() {
       
       // Token 过期预警
       if (team.token_expires_at) {
-        const daysLeft = dayjs(team.token_expires_at).diff(dayjs(), 'day')
+        const expiresAt = toLocalDate(team.token_expires_at)
+        const daysLeft = expiresAt ? expiresAt.diff(dayjs(), 'day') : 0
         if (daysLeft <= 0) {
           newWarnings.push({
             id: `token-expired-${team.id}`,

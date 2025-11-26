@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Input, Tag, Space, Select, Avatar, Tooltip } from 'antd'
 import { SearchOutlined, UserOutlined } from '@ant-design/icons'
 import { linuxdoUserApi } from '../api'
-import dayjs from 'dayjs'
+import { formatDate, formatShortDate } from '../utils/date'
 
 interface LinuxDOUser {
   id: number
@@ -103,8 +103,8 @@ export default function LinuxDOUsers() {
       dataIndex: 'invite_time', 
       width: 140,
       render: (v: string) => v ? (
-        <Tooltip title={dayjs(v).format('YYYY-MM-DD HH:mm:ss')}>
-          <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span>
+        <Tooltip title={formatDate(v)}>
+          <span style={{ color: '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span>
         </Tooltip>
       ) : <span style={{ color: '#94a3b8' }}>-</span>
     },
@@ -112,7 +112,7 @@ export default function LinuxDOUsers() {
       title: '最后登录', 
       dataIndex: 'last_login', 
       width: 140,
-      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span>
+      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span>
     },
   ]
 

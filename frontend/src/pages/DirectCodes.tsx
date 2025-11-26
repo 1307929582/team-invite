@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio, Select } from 'antd'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined, LinkOutlined, EyeOutlined } from '@ant-design/icons'
 import { redeemApi, groupApi } from '../api'
+import { formatDate, formatShortDate, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface DirectCode {
@@ -71,8 +72,10 @@ export default function DirectCodes() {
     fetchGroups()
   }, [])
 
+  const isExpiredCode = (code: DirectCode) => code.expires_at && toLocalDate(code.expires_at)?.isBefore(dayjs())
+
   const filteredCodes = codes.filter(code => {
-    const isExpired = code.expires_at && dayjs(code.expires_at).isBefore(dayjs())
+    const isExpired = isExpiredCode(code)
     const isUsedUp = code.used_count >= code.max_uses
     const isAvailable = code.is_active && !isExpired && !isUsedUp
     switch (filter) {
@@ -85,9 +88,9 @@ export default function DirectCodes() {
 
   const stats = {
     all: codes.length,
-    available: codes.filter(c => c.is_active && !(c.expires_at && dayjs(c.expires_at).isBefore(dayjs())) && c.used_count < c.max_uses).length,
+    available: codes.filter(c => c.is_active && !isExpiredCode(c) && c.used_count < c.max_uses).length,
     used: codes.filter(c => c.used_count >= c.max_uses).length,
-    expired: codes.filter(c => c.expires_at && dayjs(c.expires_at).isBefore(dayjs())).length,
+    expired: codes.filter(c => isExpiredCode(c)).length,
   }
 
   const handleCreate = async () => {
@@ -184,13 +187,13 @@ export default function DirectCodes() {
       title: '过期时间', 
       dataIndex: 'expires_at', 
       width: 110,
-      render: (v: string) => v ? <span style={{ color: dayjs(v).isBefore(dayjs()) ? '#ef4444' : '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span> : <span style={{ color: '#94a3b8' }}>永不</span>
+      render: (v: string) => v ? <span style={{ color: toLocalDate(v)?.isBefore(dayjs()) ? '#ef4444' : '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span> : <span style={{ color: '#94a3b8' }}>永不</span>
     },
     { 
       title: '状态', 
       width: 80,
       render: (_: any, r: DirectCode) => {
-        const expired = r.expires_at && dayjs(r.expires_at).isBefore(dayjs())
+        const expired = isExpiredCode(r)
         const used = r.used_count >= r.max_uses
         if (expired) return <Tag color="default">已过期</Tag>
         if (used) return <Tag color="default">已用完</Tag>
@@ -214,8 +217,8 @@ export default function DirectCodes() {
     { title: '邮箱', dataIndex: 'email' },
     { title: '加入 Team', dataIndex: 'team_name' },
     { title: '状态', dataIndex: 'status', width: 80, render: (v: string) => <Tag color={v === 'success' ? 'green' : 'default'}>{v === 'success' ? '成功' : v}</Tag> },
-    { title: '邀请时间', dataIndex: 'created_at', width: 150, render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm') },
-    { title: '接受时间', dataIndex: 'accepted_at', width: 150, render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : <span style={{ color: '#94a3b8' }}>未接受</span> },
+    { title: '邀请时间', dataIndex: 'created_at', width: 150, render: (v: string) => formatDate(v, 'YYYY-MM-DD HH:mm') },
+    { title: '接受时间', dataIndex: 'accepted_at', width: 150, render: (v: string) => v ? formatDate(v, 'YYYY-MM-DD HH:mm') : <span style={{ color: '#94a3b8' }}>未接受</span> },
   ]
 
   return (

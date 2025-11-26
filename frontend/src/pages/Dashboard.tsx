@@ -5,7 +5,7 @@ import { TeamOutlined, UserOutlined, MailOutlined, RightOutlined } from '@ant-de
 import { Line } from '@ant-design/charts'
 import { dashboardApi, teamApi } from '../api'
 import { useStore } from '../store'
-import dayjs from 'dayjs'
+import { formatShortDate, formatDateOnly } from '../utils/date'
 
 interface Stats {
   total_teams: number
@@ -112,7 +112,7 @@ export default function Dashboard() {
       dataIndex: 'created_at', 
       width: 140, 
       render: (v: string) => (
-        <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span>
+        <span style={{ color: '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span>
       )
     },
     { 
@@ -218,7 +218,7 @@ export default function Dashboard() {
               {stats?.invite_trend && stats.invite_trend.length > 0 ? (
                 <Line
                   data={stats.invite_trend.map(item => ({
-                    date: dayjs(item.date).format('MM/DD'),
+                    date: formatDateOnly(item.date).slice(5),
                     count: item.count,
                   }))}
                   xField="date"

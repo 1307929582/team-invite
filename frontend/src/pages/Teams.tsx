@@ -4,7 +4,7 @@ import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfir
 import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined, SafetyOutlined, EyeOutlined } from '@ant-design/icons'
 import { teamApi, groupApi } from '../api'
 import { useStore } from '../store'
-import dayjs from 'dayjs'
+import { formatDate } from '../utils/date'
 
 const { TextArea } = Input
 
@@ -134,7 +134,7 @@ export default function Teams() {
       title: '创建时间', 
       dataIndex: 'created_at', 
       width: 150, 
-      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('YYYY-MM-DD HH:mm')}</span>
+      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span>
     },
     {
       title: '操作', 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Card, Table, Input, Tag, Space, Select, Tooltip, Radio, Button, message } from 'antd'
 import { SearchOutlined, DownloadOutlined } from '@ant-design/icons'
 import { inviteRecordApi, teamApi, groupApi } from '../api'
+import { formatDate, formatShortDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface InviteRecord {
@@ -87,8 +88,8 @@ export default function InviteRecords() {
       r.linuxdo_username || '',
       r.status === 'success' ? '已发送' : r.status === 'pending' ? '待处理' : '失败',
       r.accepted_at ? '已接受' : '待接受',
-      dayjs(r.created_at).format('YYYY-MM-DD HH:mm:ss'),
-      r.accepted_at ? dayjs(r.accepted_at).format('YYYY-MM-DD HH:mm:ss') : ''
+      formatDate(r.created_at),
+      r.accepted_at ? formatDate(r.accepted_at) : ''
     ])
     
     const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
@@ -96,7 +97,7 @@ export default function InviteRecords() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `邀请记录_${dayjs().format('YYYYMMDD_HHmmss')}.csv`
+    a.download = `邀请记录_${formatDate(new Date(), 'YYYYMMDD_HHmmss')}.csv`
     a.click()
     URL.revokeObjectURL(url)
     message.success('导出成功')
@@ -182,8 +183,8 @@ export default function InviteRecords() {
       dataIndex: 'created_at', 
       width: 140,
       render: (v: string) => (
-        <Tooltip title={dayjs(v).format('YYYY-MM-DD HH:mm:ss')}>
-          <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span>
+        <Tooltip title={formatDate(v)}>
+          <span style={{ color: '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span>
         </Tooltip>
       )
     },
@@ -192,8 +193,8 @@ export default function InviteRecords() {
       dataIndex: 'accepted_at', 
       width: 140,
       render: (v: string) => v ? (
-        <Tooltip title={dayjs(v).format('YYYY-MM-DD HH:mm:ss')}>
-          <span style={{ color: '#64748b', fontSize: 13 }}>{dayjs(v).format('MM-DD HH:mm')}</span>
+        <Tooltip title={formatDate(v)}>
+          <span style={{ color: '#64748b', fontSize: 13 }}>{formatShortDate(v)}</span>
         </Tooltip>
       ) : <span style={{ color: '#94a3b8' }}>-</span>
     },
