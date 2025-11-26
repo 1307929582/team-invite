@@ -1,6 +1,6 @@
 # 认证路由
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -15,23 +15,34 @@ from app.services.auth import (
     get_current_admin
 )
 from app.config import settings
+from app.limiter import limiter
+from app.logger import get_logger
 
 router = APIRouter(prefix="/auth", tags=["认证"])
+logger = get_logger(__name__)
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")  # 每分钟最多5次登录尝试
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     """用户登录"""
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
+        logger.warning("Login failed", extra={
+            "username": form_data.username,
+            "client_ip": request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+        })
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    logger.info("Login success", extra={"username": user.username})
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires

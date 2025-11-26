@@ -2,7 +2,7 @@
 from datetime import datetime
 import httpx
 import secrets
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel, EmailStr
@@ -13,8 +13,11 @@ from app.models import (
     Team, TeamMember, RedeemCode, RedeemCodeType, LinuxDOUser, InviteRecord, InviteStatus, SystemConfig
 )
 from app.services.chatgpt_api import ChatGPTAPI, ChatGPTAPIError
+from app.limiter import limiter
+from app.logger import get_logger
 
 router = APIRouter(prefix="/public", tags=["public"])
+logger = get_logger(__name__)
 
 
 def get_config(db: Session, key: str) -> Optional[str]:
@@ -88,7 +91,8 @@ async def get_linuxdo_auth_url(db: Session = Depends(get_db)):
 
 
 @router.post("/linuxdo/callback", response_model=LinuxDOUserInfo)
-async def linuxdo_callback(data: LinuxDOCallback, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")  # 每分钟最多20次
+async def linuxdo_callback(request: Request, data: LinuxDOCallback, db: Session = Depends(get_db)):
     """LinuxDO OAuth 回调"""
     client_id = get_config(db, "linuxdo_client_id")
     client_secret = get_config(db, "linuxdo_client_secret")
@@ -246,7 +250,8 @@ async def get_seat_stats(db: Session = Depends(get_db)):
 
 
 @router.post("/redeem", response_model=RedeemResponse)
-async def use_redeem_code(data: RedeemRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  # 每分钟最多10次
+async def use_redeem_code(request: Request, data: RedeemRequest, db: Session = Depends(get_db)):
     """使用兑换码加入 Team"""
     # 验证用户
     user = get_linuxdo_user_from_token(db, data.linuxdo_token)
@@ -386,7 +391,8 @@ async def get_direct_code_info(code: str, db: Session = Depends(get_db)):
 
 
 @router.post("/direct-redeem", response_model=DirectRedeemResponse)
-async def direct_redeem(data: DirectRedeemRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  # 每分钟最多10次
+async def direct_redeem(request: Request, data: DirectRedeemRequest, db: Session = Depends(get_db)):
     """直接兑换（无需登录，只需邮箱和兑换码）"""
     # 验证兑换码（加锁防止并发）
     code = db.query(RedeemCode).filter(
