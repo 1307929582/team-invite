@@ -9,14 +9,7 @@ COPY . .
 
 RUN mkdir -p data
 
-# 创建启动脚本
-RUN echo '#!/bin/bash\n\
-# 执行数据库迁移\n\
-alembic upgrade head\n\
-# 启动应用\n\
-exec uvicorn app.main:app --host 0.0.0.0 --port 4567 --workers 4\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
 EXPOSE 4567
 
-CMD ["/app/start.sh"]
+# 启动时执行迁移并启动应用
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 4567 --workers 4"]
