@@ -20,6 +20,12 @@ export default function Setup() {
         confirm_password: values.confirmPassword
       })
       setSuccess(true)
+      // 延迟跳转，让用户看到成功提示
+      setTimeout(() => {
+        navigate('/admin/login')
+        // 刷新页面以更新初始化状态
+        window.location.reload()
+      }, 2000)
     } catch (e: any) {
       message.error(e.response?.data?.detail || '初始化失败')
     } finally {
@@ -48,11 +54,13 @@ export default function Setup() {
           <Result
             icon={<CheckCircleOutlined style={{ color: '#10b981' }} />}
             title="系统初始化成功！"
-            subTitle="管理员账号已创建，现在可以登录管理后台"
-            extra={
-              <Button type="primary" size="large" onClick={() => navigate('/admin/login')}>
-                前往登录
-              </Button>
+            subTitle={
+              <div>
+                <p>管理员账号已创建</p>
+                <p style={{ color: '#64748b', fontSize: 13, marginTop: 8 }}>
+                  正在跳转到登录页面...
+                </p>
+              </div>
             }
           />
         </Card>
