@@ -9,7 +9,11 @@ COPY . .
 
 RUN mkdir -p data
 
+# 复制并设置启动脚本权限
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 4567
 
-# 启动时执行迁移并启动应用
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 4567 --workers 4"]
+# 使用启动脚本
+CMD ["/entrypoint.sh"]
