@@ -247,7 +247,7 @@ class GeminiInviteRecord(Base):
     team_id = Column(Integer, ForeignKey("gemini_teams.id"), nullable=False)
     email = Column(String(100), nullable=False)
     role = Column(String(50), default="viewer")
-    status = Column(Enum(InviteStatus), default=InviteStatus.PENDING)
+    status = Column(String(20), default="pending")  # 使用 String 避免枚举冲突
     error_message = Column(Text, nullable=True)
     invited_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

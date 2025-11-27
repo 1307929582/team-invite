@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 
 from app.database import get_db
-from app.models import GeminiTeam, GeminiMember, GeminiInviteRecord, InviteStatus, User
+from app.models import GeminiTeam, GeminiMember, GeminiInviteRecord, User
 from app.services.gemini_api import GeminiAPI, GeminiAPIError
 from app.services.auth import get_current_user
 from app.logger import get_logger
@@ -316,7 +316,7 @@ async def invite_gemini_members(
             team_id=team.id,
             email=email,
             role=data.role,
-            status=InviteStatus.SUCCESS,
+            status="success",
             invited_by=current_user.id
         )
         db.add(record)
@@ -326,7 +326,7 @@ async def invite_gemini_members(
             team_id=team.id,
             email=item.get("email"),
             role=data.role,
-            status=InviteStatus.FAILED,
+            status="failed",
             error_message=item.get("error"),
             invited_by=current_user.id
         )

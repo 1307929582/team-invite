@@ -54,7 +54,7 @@ def upgrade() -> None:
         sa.Column('team_id', sa.Integer(), nullable=False),
         sa.Column('email', sa.String(100), nullable=False),
         sa.Column('role', sa.String(50), default='viewer'),
-        sa.Column('status', sa.Enum('pending', 'success', 'failed', name='invitestatus', create_type=False), nullable=True),
+        sa.Column('status', sa.String(20), default='pending'),
         sa.Column('error_message', sa.Text(), nullable=True),
         sa.Column('invited_by', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
