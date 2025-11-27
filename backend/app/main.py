@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import init_db, SessionLocal
-from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records
+from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records, gemini
 from app.logger import setup_logging, get_logger
 from app.limiter import limiter, rate_limit_exceeded_handler
 
@@ -167,22 +167,45 @@ async def periodic_sync():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
+    import os
     logger.info("Application starting", extra={
         "app": settings.APP_NAME,
-        "version": settings.APP_VERSION
+        "version": settings.APP_VERSION,
+        "pid": os.getpid()
     })
     # 启动时初始化数据库
     init_db()
-    # 启动定时同步任务
-    sync_task = asyncio.create_task(periodic_sync())
+    
+    # 只在主 worker 中启动定时任务（通过文件锁实现）
+    sync_task = None
+    lock_file = "/tmp/team_sync.lock"
+    lock_acquired = False
+    
+    try:
+        # 尝试获取锁（非阻塞）
+        import fcntl
+        lock_fd = open(lock_file, 'w')
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_acquired = True
+        lock_fd.write(str(os.getpid()))
+        lock_fd.flush()
+        logger.info("Acquired sync lock, starting periodic sync task", extra={"pid": os.getpid()})
+        sync_task = asyncio.create_task(periodic_sync())
+    except (IOError, OSError):
+        logger.info("Another worker has sync lock, skipping periodic sync", extra={"pid": os.getpid()})
+    
     yield
+    
     # 关闭时取消任务
     logger.info("Application shutting down")
-    sync_task.cancel()
-    try:
-        await sync_task
-    except asyncio.CancelledError:
-        pass
+    if sync_task:
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
+    if lock_acquired:
+        lock_fd.close()
 
 
 app = FastAPI(
@@ -243,6 +266,7 @@ app.include_router(config.router, prefix=settings.API_PREFIX)
 app.include_router(users.router, prefix=settings.API_PREFIX)
 app.include_router(groups.router, prefix=settings.API_PREFIX)
 app.include_router(invite_records.router, prefix=settings.API_PREFIX)
+app.include_router(gemini.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")

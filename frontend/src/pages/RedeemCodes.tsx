@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, InputNumber, message, Popconfirm, Tooltip, Radio, Select } from 'antd'
 import { PlusOutlined, DeleteOutlined, CopyOutlined, StopOutlined, CheckOutlined, EyeOutlined } from '@ant-design/icons'
-import { redeemApi } from '../api'
+import { redeemApi, groupApi } from '../api'
 import { formatDate, formatDateOnly, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
@@ -12,7 +12,15 @@ interface RedeemCode {
   used_count: number
   expires_at?: string
   is_active: boolean
+  group_id?: number
+  group_name?: string
   created_at: string
+}
+
+interface Group {
+  id: number
+  name: string
+  color: string
 }
 
 interface InviteRecord {
@@ -28,6 +36,7 @@ type FilterType = 'all' | 'available' | 'used' | 'expired'
 
 export default function RedeemCodes() {
   const [codes, setCodes] = useState<RedeemCode[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -49,8 +58,16 @@ export default function RedeemCodes() {
     }
   }
 
+  const fetchGroups = async () => {
+    try {
+      const res: any = await groupApi.list()
+      setGroups(res)
+    } catch {}
+  }
+
   useEffect(() => {
     fetchCodes()
+    fetchGroups()
   }, [])
 
   // 根据筛选条件过滤
@@ -165,7 +182,14 @@ export default function RedeemCodes() {
         </Space>
       )
     },
-
+    { 
+      title: '分组', 
+      dataIndex: 'group_name', 
+      width: 100,
+      render: (v: string, r: RedeemCode) => v ? (
+        <Tag color={groups.find(g => g.id === r.group_id)?.color}>{v}</Tag>
+      ) : <span style={{ color: '#94a3b8' }}>默认(LinuxDO)</span>
+    },
     { 
       title: '使用情况', 
       width: 100,
@@ -304,6 +328,11 @@ export default function RedeemCodes() {
           </div>
         ) : (
           <Form form={form} layout="vertical" initialValues={{ count: 1, max_uses: 1, prefix: '' }}>
+            <Form.Item name="group_id" label="分配到分组" extra="不选则默认分配到名为 'LinuxDO' 的分组">
+              <Select placeholder="默认使用 LinuxDO 分组" allowClear>
+                {groups.map(g => <Select.Option key={g.id} value={g.id}><Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space></Select.Option>)}
+              </Select>
+            </Form.Item>
             <Form.Item name="count" label="生成数量" rules={[{ required: true }]}>
               <InputNumber min={1} max={100} style={{ width: '100%' }} />
             </Form.Item>

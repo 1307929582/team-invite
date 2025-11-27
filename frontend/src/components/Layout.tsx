@@ -45,6 +45,9 @@ const menuItems = [
   { key: '/admin/direct-codes', icon: <GiftOutlined />, label: '直接邀请链接' },
   { key: '/admin/invite-records', icon: <UnorderedListOutlined />, label: '邀请记录' },
   { key: '/admin/users', icon: <UserOutlined />, label: 'LinuxDO 用户' },
+  { type: 'divider' as const },
+  { key: '/admin/gemini', icon: <TeamOutlined />, label: 'Gemini 管理' },
+  { type: 'divider' as const },
   { key: '/admin/logs', icon: <FileTextOutlined />, label: '操作日志' },
   { key: '/admin/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]

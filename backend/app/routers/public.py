@@ -27,11 +27,27 @@ def get_config(db: Session, key: str) -> Optional[str]:
     return config.value if config else None
 
 
-def get_available_team(db: Session, group_id: Optional[int] = None) -> Optional[Team]:
-    """获取有空位的 Team"""
+def get_available_team(db: Session, group_id: Optional[int] = None, group_name: Optional[str] = None) -> Optional[Team]:
+    """获取有空位的 Team
+    
+    Args:
+        group_id: 指定分组 ID
+        group_name: 指定分组名称（如果 group_id 为空，则按名称查找）
+    """
     team_query = db.query(Team).filter(Team.is_active == True)
+    
     if group_id:
         team_query = team_query.filter(Team.group_id == group_id)
+    elif group_name:
+        # 按分组名称查找
+        from app.models import TeamGroup
+        group = db.query(TeamGroup).filter(TeamGroup.name == group_name).first()
+        if group:
+            team_query = team_query.filter(Team.group_id == group.id)
+        else:
+            # 分组不存在，返回 None
+            return None
+    
     teams = team_query.with_for_update().all()
     
     for team in teams:
@@ -324,7 +340,12 @@ async def use_redeem_code(request: Request, data: RedeemRequest, db: Session = D
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
     # 查找有空位的 Team
-    available_team = get_available_team(db, code.group_id)
+    # LinuxDO 类型兑换码：优先使用 code.group_id，否则强制使用 "LinuxDO" 分组
+    if code.group_id:
+        available_team = get_available_team(db, group_id=code.group_id)
+    else:
+        # 没有指定分组时，LinuxDO 兑换码强制使用 LinuxDO 分组
+        available_team = get_available_team(db, group_name="LinuxDO")
     
     if not available_team:
         raise HTTPException(status_code=400, detail="所有 Team 已满，请稍后再试")
