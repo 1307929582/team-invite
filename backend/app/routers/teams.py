@@ -218,11 +218,17 @@ async def sync_team_members(
     # 清除旧成员数据
     db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
     
-    # 插入新成员数据
+    # 插入新成员数据（去重）
+    seen_emails = set()
     for m in members_data:
+        email = m.get("email", "").lower().strip()
+        if not email or email in seen_emails:
+            continue
+        seen_emails.add(email)
+        
         member = TeamMember(
             team_id=team_id,
-            email=m.get("email", ""),
+            email=email,
             name=m.get("name", m.get("display_name", "")),
             role=m.get("role", "member"),
             chatgpt_user_id=m.get("id", m.get("user_id", "")),
