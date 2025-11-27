@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import init_db, SessionLocal
-from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records, gemini
+from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records
 from app.logger import setup_logging, get_logger
 from app.limiter import limiter, rate_limit_exceeded_handler
 
@@ -266,7 +266,6 @@ app.include_router(config.router, prefix=settings.API_PREFIX)
 app.include_router(users.router, prefix=settings.API_PREFIX)
 app.include_router(groups.router, prefix=settings.API_PREFIX)
 app.include_router(invite_records.router, prefix=settings.API_PREFIX)
-app.include_router(gemini.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")

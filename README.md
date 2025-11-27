@@ -54,7 +54,6 @@
 - 🔄 **成员同步** - 自动同步 Team 成员列表
 - 📈 **数据统计** - Dashboard 展示关键指标
 - 📝 **操作日志** - 完整的审计日志
-- 🌟 **Gemini Business** - 支持管理 Gemini Business 团队
 
 </td>
 </tr>
@@ -155,13 +154,7 @@ npm run dev
 
 进入「兑换码管理」→ 批量生成 → 分发给用户
 
-### 5️⃣ 管理 Gemini Business（可选）
-
-进入「Gemini 管理」→ 添加 Team → 填写账户 ID 和 Cookies
-
-📖 参考 [Gemini 管理指南](docs/GEMINI_GUIDE.md)
-
-### 6️⃣ 用户使用流程
+### 5️⃣ 用户使用流程
 
 ```
 访问首页 → LinuxDO 登录 → 输入邮箱和兑换码 → 自动分配 Team → 查收邮件接受邀请

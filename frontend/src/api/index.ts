@@ -116,24 +116,6 @@ export const inviteRecordApi = {
     api.get('/invite-records', { params }),
 }
 
-// Gemini API
-export const geminiApi = {
-  listTeams: () => api.get('/gemini/teams'),
-  getTeam: (id: number) => api.get(`/gemini/teams/${id}`),
-  createTeam: (data: { name: string; account_id: string; cookies: string; max_seats?: number; description?: string }) =>
-    api.post('/gemini/teams', data),
-  updateTeam: (id: number, data: any) => api.put(`/gemini/teams/${id}`, data),
-  deleteTeam: (id: number) => api.delete(`/gemini/teams/${id}`),
-  getMembers: (id: number) => api.get(`/gemini/teams/${id}/members`),
-  syncTeam: (id: number) => api.post(`/gemini/teams/${id}/sync`),
-  testConnection: (id: number) => api.post(`/gemini/teams/${id}/test`),
-  inviteMembers: (id: number, emails: string[], role: string = 'viewer') =>
-    api.post(`/gemini/teams/${id}/invite`, { emails, role }),
-  removeMember: (id: number, email: string) =>
-    api.post(`/gemini/teams/${id}/remove`, { email }),
-  getInvites: (id: number) => api.get(`/gemini/teams/${id}/invites`),
-}
-
 // Setup API (无需认证)
 export const setupApi = {
   getStatus: () => axios.get('/api/v1/setup/status').then(r => r.data),
