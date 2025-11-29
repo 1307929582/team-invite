@@ -38,6 +38,7 @@ export default function Teams() {
   const navigate = useNavigate()
   const { teams, setTeams } = useStore()
   const [filterGroupId, setFilterGroupId] = useState<number | undefined>(undefined)
+  const [searchKeyword, setSearchKeyword] = useState('')
 
   const fetchTeams = async () => {
     setLoading(true)
@@ -194,25 +195,38 @@ export default function Teams() {
 
       <Card bodyStyle={{ padding: 0 }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
-          <Space>
-            <span style={{ color: '#64748b' }}>分组筛选：</span>
-            <Select
-              placeholder="全部分组"
+          <Space size="large">
+            <Input.Search
+              placeholder="搜索 Team 名称"
               allowClear
-              style={{ width: 160 }}
-              value={filterGroupId}
-              onChange={setFilterGroupId}
-            >
-              {groups.map(g => (
-                <Select.Option key={g.id} value={g.id}>
-                  <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
-                </Select.Option>
-              ))}
-            </Select>
+              style={{ width: 200 }}
+              value={searchKeyword}
+              onChange={e => setSearchKeyword(e.target.value)}
+            />
+            <Space>
+              <span style={{ color: '#64748b' }}>分组：</span>
+              <Select
+                placeholder="全部分组"
+                allowClear
+                style={{ width: 140 }}
+                value={filterGroupId}
+                onChange={setFilterGroupId}
+              >
+                {groups.map(g => (
+                  <Select.Option key={g.id} value={g.id}>
+                    <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Space>
           </Space>
         </div>
         <Table 
-          dataSource={filterGroupId ? teams.filter(t => t.group_id === filterGroupId) : teams} 
+          dataSource={teams.filter(t => {
+            const matchGroup = !filterGroupId || t.group_id === filterGroupId
+            const matchSearch = !searchKeyword || t.name.toLowerCase().includes(searchKeyword.toLowerCase())
+            return matchGroup && matchSearch
+          })} 
           columns={columns} 
           rowKey="id" 
           loading={loading} 
