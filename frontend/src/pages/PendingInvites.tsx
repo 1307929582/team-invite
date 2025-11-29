@@ -21,38 +21,24 @@ export default function PendingInvites() {
   const [filterTeamId, setFilterTeamId] = useState<number | undefined>(undefined)
   const { teams, setTeams } = useStore()
 
-  const fetchAllInvites = async () => {
+  const fetchAllInvites = async (refresh = false) => {
     setLoading(true)
     try {
-      const res: any = await teamApi.list()
-      const teamsList = res.teams || []
-      setTeams(teamsList)
-
-      const allInvites: PendingInvite[] = []
-      for (const team of teamsList) {
-        try {
-          const invitesRes: any = await teamApi.getPendingInvites(team.id)
-          const items = invitesRes.items || []
-          items.forEach((item: any) => {
-            allInvites.push({
-              ...item,
-              team_id: team.id,
-              team_name: team.name,
-            })
-          })
-        } catch {}
-      }
+      // 同时获取 teams 列表和所有待处理邀请
+      const [teamsRes, invitesRes]: any = await Promise.all([
+        teamApi.list(),
+        teamApi.getAllPendingInvites(refresh)
+      ])
       
-      // 按邀请时间倒序
-      allInvites.sort((a, b) => dayjs(b.created_time).valueOf() - dayjs(a.created_time).valueOf())
-      setInvites(allInvites)
+      setTeams(teamsRes.teams || [])
+      setInvites(invitesRes.items || [])
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchAllInvites()
+    fetchAllInvites(false)
   }, [])
 
   const handleCancelInvite = async (teamId: number, email: string) => {
@@ -138,15 +124,27 @@ export default function PendingInvites() {
           <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: '#1a1a2e', letterSpacing: '-0.5px' }}>待处理邀请</h2>
           <p style={{ color: '#64748b', fontSize: 14, margin: '8px 0 0' }}>查看所有已发送但未接受的邀请</p>
         </div>
-        <Button 
-          icon={<SyncOutlined spin={loading} />} 
-          onClick={fetchAllInvites} 
-          loading={loading}
-          size="large"
-          style={{ borderRadius: 12, height: 44 }}
-        >
-          刷新
-        </Button>
+        <Space>
+          <Button 
+            icon={<SyncOutlined spin={loading} />} 
+            onClick={() => fetchAllInvites(false)} 
+            loading={loading}
+            size="large"
+            style={{ borderRadius: 12, height: 44 }}
+          >
+            刷新
+          </Button>
+          <Button 
+            type="primary"
+            icon={<SyncOutlined spin={loading} />} 
+            onClick={() => fetchAllInvites(true)} 
+            loading={loading}
+            size="large"
+            style={{ borderRadius: 12, height: 44 }}
+          >
+            强制刷新
+          </Button>
+        </Space>
       </div>
 
       <Card bodyStyle={{ padding: 0 }}>

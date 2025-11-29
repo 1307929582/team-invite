@@ -55,7 +55,8 @@ export const teamApi = {
   syncAll: () => api.post('/teams/sync-all'),
   verifyToken: (id: number) => api.post(`/teams/${id}/verify-token`),
   getSubscription: (id: number) => api.get(`/teams/${id}/subscription`),
-  getPendingInvites: (id: number) => api.get(`/teams/${id}/pending-invites`),
+  getPendingInvites: (id: number, refresh?: boolean) => api.get(`/teams/${id}/pending-invites`, { params: { refresh } }),
+  getAllPendingInvites: (refresh?: boolean) => api.get('/teams/all-pending-invites', { params: { refresh } }),
   removeMember: (teamId: number, userId: string) => api.delete(`/teams/${teamId}/members/${userId}`),
   cancelInvite: (teamId: number, email: string) => api.delete(`/teams/${teamId}/invites`, { params: { email } }),
 }

@@ -268,17 +268,29 @@ async def verify_team_token(
 @router.get("/{team_id}/subscription")
 async def get_team_subscription(
     team_id: int,
+    refresh: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """获取 Team 订阅信息"""
+    """获取 Team 订阅信息（带缓存）"""
+    from app.cache import get_subscription_cache, set_subscription_cache
+    
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
     
+    # 尝试从缓存获取
+    if not refresh:
+        cached = get_subscription_cache(team_id)
+        if cached:
+            return cached
+    
     try:
         api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
-        return await api.get_subscription(team.account_id)
+        result = await api.get_subscription(team.account_id)
+        # 写入缓存
+        set_subscription_cache(team_id, result)
+        return result
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"获取失败: {e.message}")
 
@@ -286,17 +298,29 @@ async def get_team_subscription(
 @router.get("/{team_id}/pending-invites")
 async def get_pending_invites(
     team_id: int,
+    refresh: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """获取待处理的邀请"""
+    """获取待处理的邀请（带缓存）"""
+    from app.cache import get_pending_invites_cache, set_pending_invites_cache
+    
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
     
+    # 尝试从缓存获取
+    if not refresh:
+        cached = get_pending_invites_cache(team_id)
+        if cached:
+            return cached
+    
     try:
         api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
-        return await api.get_invites(team.account_id)
+        result = await api.get_invites(team.account_id)
+        # 写入缓存
+        set_pending_invites_cache(team_id, result)
+        return result
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"获取失败: {e.message}")
 
@@ -309,6 +333,8 @@ async def remove_team_member(
     current_user: User = Depends(get_current_user)
 ):
     """移除 Team 成员"""
+    from app.cache import invalidate_team_cache
+    
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
@@ -324,6 +350,9 @@ async def remove_team_member(
         ).delete()
         db.commit()
         
+        # 清除 Redis 缓存
+        invalidate_team_cache(team_id)
+        
         return MessageResponse(message="成员已移除")
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"移除失败: {e.message}")
@@ -337,6 +366,8 @@ async def cancel_team_invite(
     current_user: User = Depends(get_current_user)
 ):
     """取消待处理的邀请"""
+    from app.cache import invalidate_team_cache
+    
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
@@ -344,6 +375,10 @@ async def cancel_team_invite(
     try:
         api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
         await api.cancel_invite(team.account_id, email)
+        
+        # 清除 Redis 缓存
+        invalidate_team_cache(team_id)
+        
         return MessageResponse(message="邀请已取消")
     except ChatGPTAPIError as e:
         raise HTTPException(status_code=400, detail=f"取消失败: {e.message}")
@@ -418,3 +453,47 @@ async def sync_all_teams(
         await asyncio.sleep(1)
     
     return MessageResponse(message=f"同步完成：成功 {success_count} 个，失败 {fail_count} 个")
+
+
+@router.get("/all-pending-invites")
+async def get_all_pending_invites(
+    refresh: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """获取所有 Team 的待处理邀请（带缓存）"""
+    from app.cache import cache_get, cache_set, CacheKeys, CacheTTL
+    import asyncio
+    
+    # 尝试从缓存获取
+    if not refresh:
+        cached = cache_get(CacheKeys.ALL_PENDING_INVITES)
+        if cached:
+            return cached
+    
+    teams_list = db.query(Team).filter(Team.is_active == True).all()
+    all_invites = []
+    
+    for team in teams_list:
+        try:
+            api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
+            result = await api.get_invites(team.account_id)
+            items = result.get("items", [])
+            for item in items:
+                item["team_id"] = team.id
+                item["team_name"] = team.name
+                all_invites.append(item)
+        except Exception:
+            pass
+        # 避免请求过快
+        await asyncio.sleep(0.5)
+    
+    # 按时间倒序
+    all_invites.sort(key=lambda x: x.get("created_time", ""), reverse=True)
+    
+    result = {"items": all_invites, "total": len(all_invites)}
+    
+    # 写入缓存
+    cache_set(CacheKeys.ALL_PENDING_INVITES, result, CacheTTL.PENDING_INVITES)
+    
+    return result
