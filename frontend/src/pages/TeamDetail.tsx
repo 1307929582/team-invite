@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Table, Button, Space, Tag, Descriptions, Spin, Input, message, Row, Col, Progress } from 'antd'
-import { ArrowLeftOutlined, SyncOutlined, SearchOutlined, DownloadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SyncOutlined, SearchOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Popconfirm } from 'antd'
 import { teamApi } from '../api'
 import { formatDate, formatDateOnly, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface Team { id: number; name: string; description?: string; account_id: string; is_active: boolean; member_count: number; created_at: string }
-interface Member { id: number; email: string; name?: string; role: string; synced_at: string; created_time?: string }
+interface Member { id: number; email: string; name?: string; role: string; synced_at: string; created_time?: string; chatgpt_user_id?: string }
 interface Subscription { plan_type: string; seats_in_use: number; seats_entitled: number; active_until: string; will_renew: boolean; billing_period: string }
 interface PendingInvite { id: string; email_address: string; role: string; created_time: string }
 
@@ -87,17 +88,51 @@ export default function TeamDetail() {
 
   const filteredMembers = members.filter(m => m.email.toLowerCase().includes(search.toLowerCase()) || (m.name || '').toLowerCase().includes(search.toLowerCase()))
 
+  const handleRemoveMember = async (userId: string) => {
+    try {
+      await teamApi.removeMember(Number(id), userId)
+      message.success('成员已移除')
+      setMembers(members.filter(m => m.chatgpt_user_id !== userId))
+    } catch {}
+  }
+
+  const handleCancelInvite = async (inviteId: string) => {
+    try {
+      await teamApi.cancelInvite(Number(id), inviteId)
+      message.success('邀请已取消')
+      setPendingInvites(pendingInvites.filter(i => i.id !== inviteId))
+    } catch {}
+  }
+
   const memberColumns = [
     { title: '邮箱', dataIndex: 'email', ellipsis: true },
     { title: '姓名', dataIndex: 'name', width: 140, render: (v: string) => v || '-' },
     { title: '角色', dataIndex: 'role', width: 120, render: (v: string) => <Tag color={v === 'account-owner' ? 'gold' : 'blue'}>{v === 'account-owner' ? '管理员' : '成员'}</Tag> },
     { title: '加入时间', dataIndex: 'created_time', width: 160, render: (v: string) => v ? <span style={{ color: '#64748b' }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span> : '-' },
+    { 
+      title: '操作', 
+      width: 80, 
+      render: (_: any, r: Member) => r.role !== 'account-owner' && r.chatgpt_user_id ? (
+        <Popconfirm title="确定移除此成员？" onConfirm={() => handleRemoveMember(r.chatgpt_user_id!)} okText="移除" cancelText="取消">
+          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      ) : null
+    },
   ]
 
   const inviteColumns = [
     { title: '邮箱', dataIndex: 'email_address', ellipsis: true },
     { title: '角色', dataIndex: 'role', width: 100, render: (v: string) => <Tag>{v}</Tag> },
     { title: '邀请时间', dataIndex: 'created_time', width: 160, render: (v: string) => <span style={{ color: '#64748b' }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span> },
+    { 
+      title: '操作', 
+      width: 80, 
+      render: (_: any, r: PendingInvite) => (
+        <Popconfirm title="确定取消此邀请？" onConfirm={() => handleCancelInvite(r.id)} okText="取消邀请" cancelText="返回">
+          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+        </Popconfirm>
+      )
+    },
   ]
 
   if (loading) {

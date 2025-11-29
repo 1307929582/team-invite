@@ -130,6 +130,14 @@ class ChatGPTAPI:
     async def get_identity(self, account_id: str) -> Dict[str, Any]:
         """获取账户身份信息"""
         return await self._request("GET", f"/accounts/{account_id}/identity", account_id)
+    
+    async def remove_member(self, account_id: str, user_id: str) -> Dict[str, Any]:
+        """移除 Team 成员"""
+        return await self._request("DELETE", f"/accounts/{account_id}/users/{user_id}", account_id)
+    
+    async def cancel_invite(self, account_id: str, invite_id: str) -> Dict[str, Any]:
+        """取消待处理的邀请"""
+        return await self._request("DELETE", f"/accounts/{account_id}/invites/{invite_id}", account_id)
 
 
 async def batch_invite(

@@ -301,6 +301,54 @@ async def get_pending_invites(
         raise HTTPException(status_code=400, detail=f"获取失败: {e.message}")
 
 
+@router.delete("/{team_id}/members/{user_id}", response_model=MessageResponse)
+async def remove_team_member(
+    team_id: int,
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """移除 Team 成员"""
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team 不存在")
+    
+    try:
+        api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
+        await api.remove_member(team.account_id, user_id)
+        
+        # 同时删除本地缓存
+        db.query(TeamMember).filter(
+            TeamMember.team_id == team_id,
+            TeamMember.chatgpt_user_id == user_id
+        ).delete()
+        db.commit()
+        
+        return MessageResponse(message="成员已移除")
+    except ChatGPTAPIError as e:
+        raise HTTPException(status_code=400, detail=f"移除失败: {e.message}")
+
+
+@router.delete("/{team_id}/invites/{invite_id}", response_model=MessageResponse)
+async def cancel_team_invite(
+    team_id: int,
+    invite_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """取消待处理的邀请"""
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team 不存在")
+    
+    try:
+        api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
+        await api.cancel_invite(team.account_id, invite_id)
+        return MessageResponse(message="邀请已取消")
+    except ChatGPTAPIError as e:
+        raise HTTPException(status_code=400, detail=f"取消失败: {e.message}")
+
+
 @router.post("/sync-all", response_model=MessageResponse)
 async def sync_all_teams(
     db: Session = Depends(get_db),
