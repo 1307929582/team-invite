@@ -41,6 +41,7 @@ const menuItems = [
   { key: '/admin/groups', icon: <AppstoreOutlined />, label: 'Team 分组' },
   { key: '/admin/teams', icon: <TeamOutlined />, label: 'Team 管理' },
   { key: '/admin/invite', icon: <MailOutlined />, label: '批量邀请' },
+  { key: '/admin/pending-invites', icon: <MailOutlined />, label: '待处理邀请' },
   { key: '/admin/redeem-codes', icon: <GiftOutlined />, label: 'LinuxDO 兑换码' },
   { key: '/admin/direct-codes', icon: <GiftOutlined />, label: '直接邀请链接' },
   { key: '/admin/invite-records', icon: <UnorderedListOutlined />, label: '邀请记录' },

@@ -18,6 +18,7 @@ import Setup from './pages/Setup'
 import DirectInvite from './pages/DirectInvite'
 import Groups from './pages/Groups'
 import InviteRecords from './pages/InviteRecords'
+import PendingInvites from './pages/PendingInvites'
 import { useStore } from './store'
 import { authApi, setupApi } from './api'
 
@@ -128,6 +129,7 @@ function App() {
           <Route path="direct-codes" element={<DirectCodes />} />
           <Route path="users" element={<LinuxDOUsers />} />
           <Route path="invite-records" element={<InviteRecords />} />
+          <Route path="pending-invites" element={<PendingInvites />} />
           <Route path="logs" element={<Logs />} />
           <Route path="settings" element={<Settings />} />
         </Route>
