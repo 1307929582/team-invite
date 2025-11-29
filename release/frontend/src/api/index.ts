@@ -1,10 +1,8 @@
 import axios from 'axios'
 import { message } from 'antd'
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api/v1'
-
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: '/api/v1',
   timeout: 30000,
 })
 
@@ -57,7 +55,10 @@ export const teamApi = {
   syncAll: () => api.post('/teams/sync-all'),
   verifyToken: (id: number) => api.post(`/teams/${id}/verify-token`),
   getSubscription: (id: number) => api.get(`/teams/${id}/subscription`),
-  getPendingInvites: (id: number) => api.get(`/teams/${id}/pending-invites`),
+  getPendingInvites: (id: number, refresh?: boolean) => api.get(`/teams/${id}/pending-invites`, { params: { refresh } }),
+  getAllPendingInvites: (refresh?: boolean) => api.get('/teams/all-pending-invites', { params: { refresh } }),
+  removeMember: (teamId: number, userId: string) => api.delete(`/teams/${teamId}/members/${userId}`),
+  cancelInvite: (teamId: number, email: string) => api.delete(`/teams/${teamId}/invites`, { params: { email } }),
 }
 
 // Invite API
@@ -118,16 +119,26 @@ export const inviteRecordApi = {
     api.get('/invite-records', { params }),
 }
 
+// Notification API
+export const notificationApi = {
+  getSettings: () => api.get('/notifications/settings'),
+  updateSettings: (data: any) => api.put('/notifications/settings', data),
+  getSmtp: () => api.get('/notifications/smtp'),
+  updateSmtp: (data: any) => api.put('/notifications/smtp', data),
+  testConnection: () => api.post('/notifications/test'),
+  testSend: () => api.post('/notifications/test-send'),
+}
+
 // Setup API (无需认证)
 export const setupApi = {
-  getStatus: () => axios.get(`${API_BASE}/setup/status`).then(r => r.data),
+  getStatus: () => axios.get('/api/v1/setup/status').then(r => r.data),
   initialize: (data: { username: string; email: string; password: string; confirm_password: string }) =>
-    axios.post(`${API_BASE}/setup/initialize`, data).then(r => r.data),
+    axios.post('/api/v1/setup/initialize', data).then(r => r.data),
 }
 
 // Public API (无需认证)
 const publicApiClient = axios.create({
-  baseURL: `${API_BASE}/public`,
+  baseURL: '/api/v1/public',
   timeout: 30000,
 })
 

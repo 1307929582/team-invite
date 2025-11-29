@@ -49,6 +49,7 @@ const menuItems = [
   { type: 'divider' as const },
   { key: '/admin/logs', icon: <FileTextOutlined />, label: '操作日志' },
   { key: '/admin/admins', icon: <UserOutlined />, label: '管理员管理' },
+  { key: '/admin/notifications', icon: <BellOutlined />, label: '通知设置' },
   { key: '/admin/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]
 
@@ -222,19 +223,18 @@ export default function Layout() {
           padding: collapsed ? '0' : '0 20px',
           borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}>
-          <div style={{ 
-            width: 36, 
-            height: 36, 
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          }}>
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>Z</span>
-          </div>
+          <img 
+            src="/logo.jpg" 
+            alt="Logo" 
+            style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: 10,
+              objectFit: 'cover',
+              flexShrink: 0,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            }} 
+          />
           {!collapsed && (
             <span style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.3px', marginLeft: 12 }}>
               TeamHub

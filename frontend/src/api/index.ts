@@ -119,6 +119,16 @@ export const inviteRecordApi = {
     api.get('/invite-records', { params }),
 }
 
+// Notification API
+export const notificationApi = {
+  getSettings: () => api.get('/notifications/settings'),
+  updateSettings: (data: any) => api.put('/notifications/settings', data),
+  getSmtp: () => api.get('/notifications/smtp'),
+  updateSmtp: (data: any) => api.put('/notifications/smtp', data),
+  testConnection: () => api.post('/notifications/test'),
+  testSend: () => api.post('/notifications/test-send'),
+}
+
 // Setup API (无需认证)
 export const setupApi = {
   getStatus: () => axios.get('/api/v1/setup/status').then(r => r.data),

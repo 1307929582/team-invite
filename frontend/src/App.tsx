@@ -20,6 +20,7 @@ import Groups from './pages/Groups'
 import InviteRecords from './pages/InviteRecords'
 import PendingInvites from './pages/PendingInvites'
 import Admins from './pages/Admins'
+import Notifications from './pages/Notifications'
 import { useStore } from './store'
 import { authApi, setupApi } from './api'
 
@@ -134,6 +135,7 @@ function App() {
           <Route path="logs" element={<Logs />} />
           <Route path="settings" element={<Settings />} />
           <Route path="admins" element={<Admins />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </BrowserRouter>

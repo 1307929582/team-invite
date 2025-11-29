@@ -70,6 +70,20 @@ async def invite_members(
     db.add(log)
     db.commit()
     
+    # 发送邮件通知
+    try:
+        from app.services.email import send_new_invite_notification
+        send_new_invite_notification(
+            db, 
+            team.name, 
+            [str(e) for e in invite_data.emails], 
+            success_count, 
+            fail_count
+        )
+    except Exception as e:
+        # 邮件发送失败不影响主流程
+        pass
+    
     return BatchInviteResponse(
         batch_id=batch_id,
         total=len(results),

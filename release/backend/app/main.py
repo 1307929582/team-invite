@@ -8,7 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import init_db, SessionLocal
-from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records
+from app.routers import auth, teams, invites, dashboard, public, redeem, config, users, setup, groups, invite_records, admins, notifications
 from app.logger import setup_logging, get_logger
 from app.limiter import limiter, rate_limit_exceeded_handler
 
@@ -99,24 +99,48 @@ async def sync_all_teams():
 async def check_and_send_alerts():
     """检查预警并发送邮件"""
     from app.models import Team, TeamMember
-    from app.services.email import send_alert_email
+    from app.services.email import (
+        send_alert_email, 
+        get_notification_settings,
+        send_token_expiring_notification,
+        send_seat_warning_notification
+    )
     from datetime import datetime, timedelta
     
     db = SessionLocal()
     try:
+        # 获取通知设置
+        settings = get_notification_settings(db)
+        if not settings.get("enabled"):
+            logger.info("Notifications disabled, skipping alert check")
+            return
+        
+        token_expiring_days = settings.get("token_expiring_days", 7)
+        seat_warning_threshold = settings.get("seat_warning_threshold", 80)
+        
         alerts = []
         teams_list = db.query(Team).filter(Team.is_active == True).all()
         
         for team in teams_list:
-            # 检查成员数量
+            # 检查成员数量和座位使用率
             member_count = db.query(TeamMember).filter(TeamMember.team_id == team.id).count()
+            max_seats = team.max_seats or 5
+            usage_percent = (member_count / max_seats * 100) if max_seats > 0 else 0
             
-            if member_count > 5:
+            if member_count >= max_seats:
                 alerts.append({
                     "type": "error",
                     "team": team.name,
-                    "message": f"成员超限！当前 {member_count} 人，超过 5 人限制，有封号风险！"
+                    "message": f"座位已满！当前 {member_count}/{max_seats} 人，无法继续邀请。"
                 })
+                send_seat_warning_notification(db, team.name, member_count, max_seats)
+            elif usage_percent >= seat_warning_threshold:
+                alerts.append({
+                    "type": "warning",
+                    "team": team.name,
+                    "message": f"座位使用率 {usage_percent:.0f}%（{member_count}/{max_seats}），接近上限。"
+                })
+                send_seat_warning_notification(db, team.name, member_count, max_seats)
             
             # 检查 Token 过期
             if team.token_expires_at:
@@ -127,12 +151,14 @@ async def check_and_send_alerts():
                         "team": team.name,
                         "message": "Token 已过期，请尽快更新"
                     })
-                elif days_left <= 7:
+                    send_token_expiring_notification(db, team.name, days_left)
+                elif days_left <= token_expiring_days:
                     alerts.append({
                         "type": "warning",
                         "team": team.name,
                         "message": f"Token 将在 {days_left} 天后过期"
                     })
+                    send_token_expiring_notification(db, team.name, days_left)
         
         if alerts:
             send_alert_email(db, alerts)
@@ -266,6 +292,8 @@ app.include_router(config.router, prefix=settings.API_PREFIX)
 app.include_router(users.router, prefix=settings.API_PREFIX)
 app.include_router(groups.router, prefix=settings.API_PREFIX)
 app.include_router(invite_records.router, prefix=settings.API_PREFIX)
+app.include_router(admins.router, prefix=settings.API_PREFIX)
+app.include_router(notifications.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
