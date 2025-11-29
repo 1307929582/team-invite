@@ -469,29 +469,38 @@ async def get_all_pending_invites(
     if not refresh:
         cached = cache_get(CacheKeys.ALL_PENDING_INVITES)
         if cached:
+            print(f"[PendingInvites] 从缓存获取，共 {cached.get('total', 0)} 条")
             return cached
     
     teams_list = db.query(Team).filter(Team.is_active == True).all()
+    print(f"[PendingInvites] 开始获取 {len(teams_list)} 个 Team 的待处理邀请")
     all_invites = []
+    errors = []
     
     for team in teams_list:
         try:
             api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
             result = await api.get_invites(team.account_id)
             items = result.get("items", [])
+            print(f"[PendingInvites] Team {team.name}: 获取到 {len(items)} 条邀请")
             for item in items:
                 item["team_id"] = team.id
                 item["team_name"] = team.name
                 all_invites.append(item)
-        except Exception:
-            pass
+        except ChatGPTAPIError as e:
+            errors.append(f"{team.name}: {e.message}")
+            print(f"[PendingInvites] Team {team.name} 获取失败: {e.message}")
+        except Exception as e:
+            errors.append(f"{team.name}: {str(e)}")
+            print(f"[PendingInvites] Team {team.name} 获取异常: {str(e)}")
         # 避免请求过快
         await asyncio.sleep(0.5)
     
     # 按时间倒序
     all_invites.sort(key=lambda x: x.get("created_time", ""), reverse=True)
     
-    result = {"items": all_invites, "total": len(all_invites)}
+    result = {"items": all_invites, "total": len(all_invites), "errors": errors}
+    print(f"[PendingInvites] 总共获取 {len(all_invites)} 条邀请，{len(errors)} 个错误")
     
     # 写入缓存
     cache_set(CacheKeys.ALL_PENDING_INVITES, result, CacheTTL.PENDING_INVITES)
