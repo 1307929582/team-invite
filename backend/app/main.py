@@ -98,14 +98,16 @@ async def sync_all_teams():
 
 async def check_and_send_alerts():
     """检查预警并发送邮件"""
-    from app.models import Team, TeamMember
+    from app.models import Team, TeamMember, TeamGroup
     from app.services.email import (
         send_alert_email, 
         get_notification_settings,
         send_token_expiring_notification,
-        send_seat_warning_notification
+        send_seat_warning_notification,
+        send_group_seat_warning
     )
     from datetime import datetime, timedelta
+    from sqlalchemy import func
     
     db = SessionLocal()
     try:
@@ -117,6 +119,7 @@ async def check_and_send_alerts():
         
         token_expiring_days = settings.get("token_expiring_days", 7)
         seat_warning_threshold = settings.get("seat_warning_threshold", 80)
+        group_seat_warning_threshold = settings.get("group_seat_warning_threshold", 5)  # 分组剩余座位预警阈值
         
         alerts = []
         teams_list = db.query(Team).filter(Team.is_active == True).all()
@@ -159,6 +162,42 @@ async def check_and_send_alerts():
                         "message": f"Token 将在 {days_left} 天后过期"
                     })
                     send_token_expiring_notification(db, team.name, days_left)
+        
+        # 检查分组座位情况
+        groups = db.query(TeamGroup).all()
+        for group in groups:
+            # 获取该分组下所有 Team 的座位统计
+            group_teams = db.query(Team).filter(
+                Team.group_id == group.id,
+                Team.is_active == True
+            ).all()
+            
+            if not group_teams:
+                continue
+            
+            total_seats = sum(t.max_seats or 5 for t in group_teams)
+            used_seats = 0
+            for t in group_teams:
+                used_seats += db.query(TeamMember).filter(TeamMember.team_id == t.id).count()
+            
+            available_seats = total_seats - used_seats
+            usage_percent = (used_seats / total_seats * 100) if total_seats > 0 else 0
+            
+            # 分组座位预警：剩余座位少于阈值或使用率超过阈值
+            if available_seats <= 0:
+                alerts.append({
+                    "type": "error",
+                    "team": f"分组: {group.name}",
+                    "message": f"分组座位已满！（{used_seats}/{total_seats}）"
+                })
+                send_group_seat_warning(db, group.name, used_seats, total_seats, available_seats)
+            elif available_seats <= group_seat_warning_threshold:
+                alerts.append({
+                    "type": "warning",
+                    "team": f"分组: {group.name}",
+                    "message": f"分组仅剩 {available_seats} 个空位（{used_seats}/{total_seats}）"
+                })
+                send_group_seat_warning(db, group.name, used_seats, total_seats, available_seats)
         
         if alerts:
             send_alert_email(db, alerts)

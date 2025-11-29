@@ -259,6 +259,14 @@ export default function Settings() {
             <Input placeholder="7" size="large" type="number" />
           </Form.Item>
 
+          <Form.Item 
+            name="group_seat_warning_threshold" 
+            label="分组空位预警阈值"
+            extra="分组剩余空位少于此数量时发送预警"
+          >
+            <Input placeholder="5" size="large" type="number" />
+          </Form.Item>
+
           <Divider />
 
           <Space size="middle">

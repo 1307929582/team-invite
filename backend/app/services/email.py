@@ -57,6 +57,7 @@ def get_notification_settings(db: Session) -> Dict[str, Any]:
         "enabled": False,
         "token_expiring_days": 7,      # Token 过期提前几天提醒
         "seat_warning_threshold": 80,  # 座位使用率预警阈值（百分比）
+        "group_seat_warning_threshold": 5,  # 分组剩余座位预警阈值
         "notify_new_invite": True,     # 是否通知新邀请
         "notify_invite_accepted": False,  # 是否通知邀请接受
         "daily_report_enabled": False,    # 是否发送每日报告
@@ -323,13 +324,61 @@ def send_daily_report(db: Session, stats: Dict[str, Any]) -> bool:
     return send_email(db, subject, content)
 
 
+def send_group_seat_warning(db: Session, group_name: str, used: int, total: int, available: int) -> bool:
+    """发送分组座位预警通知"""
+    settings = get_notification_settings(db)
+    if not settings.get("enabled"):
+        return False
+    
+    percentage = round(used / total * 100) if total > 0 else 0
+    
+    if available <= 0:
+        subject = f"🚨 分组座位已满 - {group_name}"
+        bg_color = "#fee2e2"
+        border_color = "#ef4444"
+        title_color = "#dc2626"
+        title = "分组座位已满"
+        message = f"分组 <strong>{group_name}</strong> 的座位已全部占用（{used}/{total}），无法继续邀请新成员！"
+    elif available <= 3:
+        subject = f"⚠️ 分组座位即将满 - {group_name}"
+        bg_color = "#fef3c7"
+        border_color = "#f59e0b"
+        title_color = "#d97706"
+        title = "分组座位即将满"
+        message = f"分组 <strong>{group_name}</strong> 仅剩 <strong>{available}</strong> 个空位（{used}/{total}），请及时处理。"
+    else:
+        subject = f"📊 分组座位预警 - {group_name}"
+        bg_color = "#fef3c7"
+        border_color = "#f59e0b"
+        title_color = "#d97706"
+        title = "分组座位预警"
+        message = f"分组 <strong>{group_name}</strong> 座位使用率已达 <strong>{percentage}%</strong>（{used}/{total}），剩余 {available} 个空位。"
+    
+    content = f"""
+    <div style="padding: 20px; background: {bg_color}; border-radius: 8px; border-left: 4px solid {border_color};">
+        <h3 style="margin: 0 0 10px 0; color: {title_color};">{title}</h3>
+        <p style="margin: 0;">{message}</p>
+        <div style="margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;">
+                <span>座位使用情况</span>
+                <span>{used} / {total} (剩余 {available})</span>
+            </div>
+            <div style="background: #fff; border-radius: 4px; overflow: hidden;">
+                <div style="height: 10px; background: {border_color}; width: {percentage}%;"></div>
+            </div>
+        </div>
+    </div>
+    """
+    
+    return send_email(db, subject, content)
+
+
 def test_email_connection(db: Session) -> Dict[str, Any]:
     """测试邮件连接"""
     smtp_host = get_config(db, "smtp_host")
     smtp_port = get_config(db, "smtp_port")
     smtp_user = get_config(db, "smtp_user")
     smtp_password = get_config(db, "smtp_password")
-    admin_email = get_config(db, "admin_email")
     
     if not all([smtp_host, smtp_port, smtp_user, smtp_password]):
         return {"success": False, "message": "SMTP 配置不完整"}
