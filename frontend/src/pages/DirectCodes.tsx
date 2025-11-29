@@ -233,32 +233,42 @@ export default function DirectCodes() {
       </div>
 
       {/* 使用说明 */}
-      <Collapse 
-        ghost 
-        style={{ marginBottom: 16, background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12 }}
-        items={[{
-          key: '1',
-          label: <span style={{ color: '#3b82f6' }}><QuestionCircleOutlined style={{ marginRight: 8 }} />使用说明</span>,
-          children: (
-            <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.8 }}>
-              <p><strong>适用场景：</strong>闲鱼、淘宝等渠道销售，用户无需登录即可使用</p>
-              <p><strong>使用流程：</strong></p>
-              <ol style={{ paddingLeft: 20, margin: '8px 0' }}>
-                <li>点击「生成链接」创建邀请链接</li>
-                <li>复制链接发送给买家</li>
-                <li>买家打开链接，输入邮箱即可收到 ChatGPT Team 邀请</li>
-                <li>买家在邮箱中点击接受邀请，完成加入</li>
-              </ol>
-              <p><strong>建议设置：</strong></p>
-              <ul style={{ paddingLeft: 20, margin: '8px 0' }}>
-                <li>每个链接可用次数设为 <strong>1</strong>，一人一链接，方便追踪</li>
-                <li>备注填写订单号，便于售后查询</li>
-                <li>可设置有效期，过期自动失效</li>
-              </ul>
-            </div>
-          )
-        }]}
-      />
+      <Card 
+        size="small" 
+        style={{ marginBottom: 16, background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #93c5fd' }}
+      >
+        <Collapse 
+          ghost 
+          defaultActiveKey={[]}
+          items={[{
+            key: '1',
+            label: (
+              <span style={{ color: '#1d4ed8', fontWeight: 600, fontSize: 14 }}>
+                <QuestionCircleOutlined style={{ marginRight: 8 }} />
+                📖 使用说明（点击展开）
+              </span>
+            ),
+            children: (
+              <div style={{ color: '#475569', fontSize: 13, lineHeight: 2, paddingTop: 8 }}>
+                <p style={{ margin: '0 0 12px' }}><strong>🎯 适用场景：</strong>闲鱼、淘宝等渠道销售，用户无需登录即可使用</p>
+                <p style={{ margin: '0 0 8px' }}><strong>📋 使用流程：</strong></p>
+                <ol style={{ paddingLeft: 24, margin: '0 0 12px' }}>
+                  <li>点击右上角「生成链接」创建邀请链接</li>
+                  <li>复制链接发送给买家</li>
+                  <li>买家打开链接，输入邮箱即可收到 ChatGPT Team 邀请</li>
+                  <li>买家在邮箱中点击接受邀请，完成加入</li>
+                </ol>
+                <p style={{ margin: '0 0 8px' }}><strong>💡 建议设置：</strong></p>
+                <ul style={{ paddingLeft: 24, margin: 0 }}>
+                  <li>每个链接可用次数设为 <strong>1</strong>，一人一链接，方便追踪</li>
+                  <li>备注填写订单号，便于售后查询</li>
+                  <li>可设置有效期，过期自动失效</li>
+                </ul>
+              </div>
+            )
+          }]}
+        />
+      </Card>
 
       <Card bodyStyle={{ padding: 0 }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
