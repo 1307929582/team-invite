@@ -255,52 +255,59 @@ export default function Dashboard() {
 
       {/* Team 列表 */}
       <Card 
-        title="Team 座位情况" 
+        title={`Team 座位情况 (${teams.length})`}
         size="small"
         extra={
           <Button type="link" size="small" onClick={() => navigate('/admin/teams')} style={{ color: '#64748b' }}>
-            查看全部 <RightOutlined />
+            管理 <RightOutlined />
           </Button>
         }
         style={{ marginBottom: 20 }}
       >
-        <Row gutter={16}>
-          {teams.slice(0, 4).map(team => {
-            const memberCount = team.member_count || 0
-            const maxSeats = team.max_seats || 5
-            const usage = maxSeats > 0 ? Math.round((memberCount / maxSeats) * 100) : 0
-            return (
-              <Col span={6} key={team.id}>
-                <div 
-                  onClick={() => navigate(`/admin/teams/${team.id}`)}
-                  style={{ 
-                    padding: 20, 
-                    background: 'rgba(255, 255, 255, 0.5)', 
-                    borderRadius: 14, 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    border: '1px solid rgba(0, 0, 0, 0.04)',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
-                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
-                    e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e' }}>{team.name}</div>
-                  <Progress 
-                    percent={usage} 
-                    size="small" 
-                    strokeColor={usage >= 90 ? '#ef4444' : usage >= 70 ? '#f59e0b' : '#10b981'}
-                    format={() => `${memberCount}/${maxSeats}`}
-                  />
-                </div>
-              </Col>
-            )
-          })}
+        <Row gutter={[16, 16]}>
+          {[...teams]
+            .sort((a, b) => {
+              // 按座位使用率从高到低排序
+              const usageA = (a.member_count || 0) / (a.max_seats || 5)
+              const usageB = (b.member_count || 0) / (b.max_seats || 5)
+              return usageB - usageA
+            })
+            .map(team => {
+              const memberCount = team.member_count || 0
+              const maxSeats = team.max_seats || 5
+              const usage = maxSeats > 0 ? Math.round((memberCount / maxSeats) * 100) : 0
+              return (
+                <Col xs={12} sm={8} md={6} key={team.id}>
+                  <div 
+                    onClick={() => navigate(`/admin/teams/${team.id}`)}
+                    style={{ 
+                      padding: 16, 
+                      background: 'rgba(255, 255, 255, 0.5)', 
+                      borderRadius: 14, 
+                      cursor: 'pointer',
+                      transition: 'all 0.3s',
+                      border: usage >= 90 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(0, 0, 0, 0.04)',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e', fontSize: 14 }}>{team.name}</div>
+                    <Progress 
+                      percent={usage} 
+                      size="small" 
+                      strokeColor={usage >= 90 ? '#ef4444' : usage >= 70 ? '#f59e0b' : '#10b981'}
+                      format={() => `${memberCount}/${maxSeats}`}
+                    />
+                  </div>
+                </Col>
+              )
+            })}
           {teams.length === 0 && (
             <Col span={24}>
               <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
