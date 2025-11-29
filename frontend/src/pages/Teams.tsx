@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Select } from 'antd'
+import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Select, Row, Col, Progress } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined, SafetyOutlined, EyeOutlined } from '@ant-design/icons'
 import { teamApi, groupApi } from '../api'
 import { useStore } from '../store'
@@ -180,8 +180,8 @@ export default function Teams() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: '#1a1a2e', letterSpacing: '-0.5px' }}>Team 管理</h2>
-          <p style={{ color: '#64748b', fontSize: 14, margin: '8px 0 0' }}>管理所有 ChatGPT Team 账号</p>
+          <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: '#1a1a2e', letterSpacing: '-0.5px' }}>Team 座位管理</h2>
+          <p style={{ color: '#64748b', fontSize: 14, margin: '8px 0 0' }}>管理所有 ChatGPT Team 账号和座位使用情况</p>
         </div>
         <Space>
           <Button icon={<SyncOutlined spin={syncingAll} />} onClick={handleSyncAll} loading={syncingAll} size="large" style={{ borderRadius: 12, height: 44 }}>
@@ -192,6 +192,65 @@ export default function Teams() {
           </Button>
         </Space>
       </div>
+
+      {/* 座位卡片视图 */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+        {[...teams]
+          .filter(t => {
+            const matchGroup = !filterGroupId || t.group_id === filterGroupId
+            const matchSearch = !searchKeyword || t.name.toLowerCase().includes(searchKeyword.toLowerCase())
+            return matchGroup && matchSearch
+          })
+          .sort((a, b) => {
+            const usageA = (a.member_count || 0) / (a.max_seats || 5)
+            const usageB = (b.member_count || 0) / (b.max_seats || 5)
+            return usageB - usageA
+          })
+          .map(team => {
+            const memberCount = team.member_count || 0
+            const maxSeats = team.max_seats || 5
+            const usage = maxSeats > 0 ? Math.round((memberCount / maxSeats) * 100) : 0
+            return (
+              <Col xs={12} sm={8} md={6} lg={4} key={team.id}>
+                <div 
+                  onClick={() => navigate(`/admin/teams/${team.id}`)}
+                  style={{ 
+                    padding: 16, 
+                    background: 'rgba(255, 255, 255, 0.7)', 
+                    borderRadius: 14, 
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    border: usage >= 90 ? '2px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(0, 0, 0, 0.06)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{team.name}</span>
+                    {team.group_name && (
+                      <Tag color={groups.find(g => g.id === team.group_id)?.color} style={{ margin: 0, fontSize: 11 }}>
+                        {team.group_name}
+                      </Tag>
+                    )}
+                  </div>
+                  <Progress 
+                    percent={usage} 
+                    size="small" 
+                    strokeColor={usage >= 90 ? '#ef4444' : usage >= 70 ? '#f59e0b' : '#10b981'}
+                    format={() => `${memberCount}/${maxSeats}`}
+                  />
+                </div>
+              </Col>
+            )
+          })}
+      </Row>
 
       <Card bodyStyle={{ padding: 0 }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>

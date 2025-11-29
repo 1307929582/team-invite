@@ -253,18 +253,18 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* Team 列表 */}
+      {/* Team 预览 - 显示使用率最高的4个 */}
       <Card 
-        title={`Team 座位情况 (${teams.length})`}
+        title="Team 座位预览"
         size="small"
         extra={
           <Button type="link" size="small" onClick={() => navigate('/admin/teams')} style={{ color: '#64748b' }}>
-            管理 <RightOutlined />
+            查看全部 <RightOutlined />
           </Button>
         }
         style={{ marginBottom: 20 }}
       >
-        <Row gutter={[16, 16]}>
+        <Row gutter={16}>
           {[...teams]
             .sort((a, b) => {
               // 按座位使用率从高到低排序
@@ -272,16 +272,17 @@ export default function Dashboard() {
               const usageB = (b.member_count || 0) / (b.max_seats || 5)
               return usageB - usageA
             })
+            .slice(0, 4)
             .map(team => {
               const memberCount = team.member_count || 0
               const maxSeats = team.max_seats || 5
               const usage = maxSeats > 0 ? Math.round((memberCount / maxSeats) * 100) : 0
               return (
-                <Col xs={12} sm={8} md={6} key={team.id}>
+                <Col span={6} key={team.id}>
                   <div 
                     onClick={() => navigate(`/admin/teams/${team.id}`)}
                     style={{ 
-                      padding: 16, 
+                      padding: 20, 
                       background: 'rgba(255, 255, 255, 0.5)', 
                       borderRadius: 14, 
                       cursor: 'pointer',
@@ -290,14 +291,14 @@ export default function Dashboard() {
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)'
-                      e.currentTarget.style.transform = 'translateY(-2px)'
+                      e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)'
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)'
-                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.borderColor = usage >= 90 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 0, 0, 0.04)'
                     }}
                   >
-                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e', fontSize: 14 }}>{team.name}</div>
+                    <div style={{ fontWeight: 600, marginBottom: 8, color: '#1a1a2e' }}>{team.name}</div>
                     <Progress 
                       percent={usage} 
                       size="small" 
