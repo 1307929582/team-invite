@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Table, Button, Space, Tag, Modal, Form, Input, message, Popconfirm, Tooltip, Select, Row, Col, Progress } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined, SafetyOutlined, EyeOutlined } from '@ant-design/icons'
+import { Card, Button, Space, Tag, Modal, Form, Input, message, Select, Row, Col, Progress, Dropdown, Spin } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined, SafetyOutlined, MoreOutlined } from '@ant-design/icons'
 import { teamApi, groupApi } from '../api'
 import { useStore } from '../store'
-import { formatDate } from '../utils/date'
 
 const { TextArea } = Input
 
@@ -60,17 +59,37 @@ export default function Teams() {
   useEffect(() => { fetchTeams(); fetchGroups() }, [])
 
   const handleCreate = () => { setEditingTeam(null); form.resetFields(); setModalOpen(true) }
-  const handleEdit = (team: Team) => { setEditingTeam(team); form.setFieldsValue({ ...team, group_id: team.group_id }); setModalOpen(true) }
-  const handleDelete = async (id: number) => { await teamApi.delete(id); message.success('删除成功'); fetchTeams() }
+  const handleEdit = (team: Team, e: React.MouseEvent) => { 
+    e.stopPropagation()
+    setEditingTeam(team)
+    form.setFieldsValue({ ...team, group_id: team.group_id })
+    setModalOpen(true) 
+  }
+  const handleDelete = async (id: number) => { 
+    Modal.confirm({
+      title: '确定删除此 Team？',
+      content: '删除后无法恢复',
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        await teamApi.delete(id)
+        message.success('删除成功')
+        fetchTeams()
+      }
+    })
+  }
   
-  const handleVerify = async (id: number) => { 
+  const handleVerify = async (id: number, e: React.MouseEvent) => { 
+    e.stopPropagation()
     try { 
       await teamApi.verifyToken(id)
       message.success('Token 有效') 
     } catch {} 
   }
   
-  const handleSync = async (id: number) => { 
+  const handleSync = async (id: number, e: React.MouseEvent) => { 
+    e.stopPropagation()
     setSyncing(id)
     try { 
       const res: any = await teamApi.syncMembers(id)
@@ -105,80 +124,21 @@ export default function Teams() {
     } catch {}
   }
 
-  const columns = [
-    { 
-      title: 'Team 名称', 
-      dataIndex: 'name', 
-      render: (v: string, r: Team) => (
-        <a onClick={() => navigate(`/admin/teams/${r.id}`)} style={{ fontWeight: 600, color: '#1a1a2e' }}>{v}</a>
-      )
-    },
-    {
-      title: '分组',
-      dataIndex: 'group_name',
-      width: 100,
-      render: (v: string, r: Team) => v ? (
-        <Tag color={groups.find(g => g.id === r.group_id)?.color}>{v}</Tag>
-      ) : <span style={{ color: '#94a3b8' }}>未分组</span>
-    },
-    { 
-      title: 'Account ID', 
-      dataIndex: 'account_id', 
-      width: 140, 
-      render: (v: string) => (
-        <Tooltip title={v}>
-          <code style={{ cursor: 'pointer' }}>{v?.slice(0, 10)}...</code>
-        </Tooltip>
-      )
-    },
-    { 
-      title: '成员', 
-      dataIndex: 'member_count', 
-      width: 80, 
-      render: (v: number) => <Tag color="blue">{v} 人</Tag>
-    },
-    { 
-      title: '状态', 
-      dataIndex: 'is_active', 
-      width: 80, 
-      render: (v: boolean) => <Tag color={v ? 'green' : 'default'}>{v ? '正常' : '禁用'}</Tag>
-    },
-    { 
-      title: '创建时间', 
-      dataIndex: 'created_at', 
-      width: 150, 
-      render: (v: string) => <span style={{ color: '#64748b', fontSize: 13 }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span>
-    },
-    {
-      title: '操作', 
-      width: 180,
-      render: (_: any, r: Team) => (
-        <Space size={4}>
-          <Tooltip title="查看详情">
-            <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => navigate(`/admin/teams/${r.id}`)} />
-          </Tooltip>
-          <Tooltip title="同步成员">
-            <Button size="small" type="text" icon={<SyncOutlined spin={syncing === r.id} />} onClick={() => handleSync(r.id)} loading={syncing === r.id} />
-          </Tooltip>
-          <Tooltip title="验证 Token">
-            <Button size="small" type="text" icon={<SafetyOutlined />} onClick={() => handleVerify(r.id)} />
-          </Tooltip>
-          <Tooltip title="编辑">
-            <Button size="small" type="text" icon={<EditOutlined />} onClick={() => handleEdit(r)} />
-          </Tooltip>
-          <Popconfirm title="确定删除此 Team？" onConfirm={() => handleDelete(r.id)} okText="删除" cancelText="取消">
-            <Tooltip title="删除">
-              <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
+  const filteredTeams = [...teams]
+    .filter(t => {
+      const matchGroup = !filterGroupId || t.group_id === filterGroupId
+      const matchSearch = !searchKeyword || t.name.toLowerCase().includes(searchKeyword.toLowerCase())
+      return matchGroup && matchSearch
+    })
+    .sort((a, b) => {
+      const usageA = (a.member_count || 0) / (a.max_seats || 5)
+      const usageB = (b.member_count || 0) / (b.max_seats || 5)
+      return usageB - usageA
+    })
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: '#1a1a2e', letterSpacing: '-0.5px' }}>Team 座位管理</h2>
           <p style={{ color: '#64748b', fontSize: 14, margin: '8px 0 0' }}>管理所有 ChatGPT Team 账号和座位使用情况</p>
@@ -193,105 +153,107 @@ export default function Teams() {
         </Space>
       </div>
 
+      {/* 筛选栏 */}
+      <Card size="small" style={{ marginBottom: 20 }}>
+        <Space size="large">
+          <Input.Search
+            placeholder="搜索 Team 名称"
+            allowClear
+            style={{ width: 220 }}
+            value={searchKeyword}
+            onChange={e => setSearchKeyword(e.target.value)}
+          />
+          <Space>
+            <span style={{ color: '#64748b' }}>分组：</span>
+            <Select
+              placeholder="全部分组"
+              allowClear
+              style={{ width: 160 }}
+              value={filterGroupId}
+              onChange={setFilterGroupId}
+            >
+              {groups.map(g => (
+                <Select.Option key={g.id} value={g.id}>
+                  <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
+                </Select.Option>
+              ))}
+            </Select>
+          </Space>
+          <span style={{ color: '#94a3b8' }}>共 {filteredTeams.length} 个 Team</span>
+        </Space>
+      </Card>
+
       {/* 座位卡片视图 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        {[...teams]
-          .filter(t => {
-            const matchGroup = !filterGroupId || t.group_id === filterGroupId
-            const matchSearch = !searchKeyword || t.name.toLowerCase().includes(searchKeyword.toLowerCase())
-            return matchGroup && matchSearch
-          })
-          .sort((a, b) => {
-            const usageA = (a.member_count || 0) / (a.max_seats || 5)
-            const usageB = (b.member_count || 0) / (b.max_seats || 5)
-            return usageB - usageA
-          })
-          .map(team => {
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>
+      ) : filteredTeams.length === 0 ? (
+        <Card>
+          <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>
+            {teams.length === 0 ? '暂无 Team，点击右上角添加' : '没有匹配的 Team'}
+          </div>
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {filteredTeams.map(team => {
             const memberCount = team.member_count || 0
             const maxSeats = team.max_seats || 5
             const usage = maxSeats > 0 ? Math.round((memberCount / maxSeats) * 100) : 0
+            
+            const menuItems = [
+              { key: 'sync', label: '同步成员', icon: <SyncOutlined spin={syncing === team.id} />, onClick: (e: any) => handleSync(team.id, e.domEvent) },
+              { key: 'verify', label: '验证 Token', icon: <SafetyOutlined />, onClick: (e: any) => handleVerify(team.id, e.domEvent) },
+              { key: 'edit', label: '编辑', icon: <EditOutlined />, onClick: (e: any) => handleEdit(team, e.domEvent) },
+              { type: 'divider' as const },
+              { key: 'delete', label: '删除', icon: <DeleteOutlined />, danger: true, onClick: () => handleDelete(team.id) },
+            ]
+            
             return (
               <Col xs={12} sm={8} md={6} lg={4} key={team.id}>
-                <div 
+                <Card
+                  size="small"
+                  hoverable
                   onClick={() => navigate(`/admin/teams/${team.id}`)}
                   style={{ 
-                    padding: 16, 
-                    background: 'rgba(255, 255, 255, 0.7)', 
-                    borderRadius: 14, 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
+                    borderRadius: 14,
                     border: usage >= 90 ? '2px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(0, 0, 0, 0.06)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.08)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)'
-                  }}
+                  styles={{ body: { padding: 16 } }}
+                  extra={
+                    <Dropdown 
+                      menu={{ 
+                        items: menuItems,
+                        onClick: ({ key, domEvent }) => {
+                          domEvent.stopPropagation()
+                          if (key === 'delete') {
+                            // 删除需要确认
+                          }
+                        }
+                      }} 
+                      trigger={['click']}
+                    >
+                      <Button type="text" size="small" icon={<MoreOutlined />} onClick={e => e.stopPropagation()} />
+                    </Dropdown>
+                  }
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>{team.name}</span>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, color: '#1a1a2e', fontSize: 15, marginBottom: 4 }}>{team.name}</div>
                     {team.group_name && (
-                      <Tag color={groups.find(g => g.id === team.group_id)?.color} style={{ margin: 0, fontSize: 11 }}>
+                      <Tag color={groups.find(g => g.id === team.group_id)?.color} style={{ fontSize: 11 }}>
                         {team.group_name}
                       </Tag>
                     )}
                   </div>
                   <Progress 
                     percent={usage} 
-                    size="small" 
                     strokeColor={usage >= 90 ? '#ef4444' : usage >= 70 ? '#f59e0b' : '#10b981'}
-                    format={() => `${memberCount}/${maxSeats}`}
+                    format={() => <span style={{ fontSize: 13, fontWeight: 600 }}>{memberCount}/{maxSeats}</span>}
                   />
-                </div>
+                </Card>
               </Col>
             )
           })}
-      </Row>
-
-      <Card bodyStyle={{ padding: 0 }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
-          <Space size="large">
-            <Input.Search
-              placeholder="搜索 Team 名称"
-              allowClear
-              style={{ width: 200 }}
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
-            />
-            <Space>
-              <span style={{ color: '#64748b' }}>分组：</span>
-              <Select
-                placeholder="全部分组"
-                allowClear
-                style={{ width: 140 }}
-                value={filterGroupId}
-                onChange={setFilterGroupId}
-              >
-                {groups.map(g => (
-                  <Select.Option key={g.id} value={g.id}>
-                    <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
-                  </Select.Option>
-                ))}
-              </Select>
-            </Space>
-          </Space>
-        </div>
-        <Table 
-          dataSource={teams.filter(t => {
-            const matchGroup = !filterGroupId || t.group_id === filterGroupId
-            const matchSearch = !searchKeyword || t.name.toLowerCase().includes(searchKeyword.toLowerCase())
-            return matchGroup && matchSearch
-          })} 
-          columns={columns} 
-          rowKey="id" 
-          loading={loading} 
-          pagination={{ pageSize: 10, showTotal: total => `共 ${total} 个 Team` }} 
-        />
-      </Card>
+        </Row>
+      )}
 
       <Modal 
         title={editingTeam ? '编辑 Team' : '添加 Team'} 
@@ -322,7 +284,7 @@ export default function Teams() {
             name="account_id" 
             label="Account ID" 
             rules={[{ required: true, message: '请输入 Account ID' }]} 
-            extra="从 Network 请求 URL 中获取，格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            extra="从 Network 请求 URL 中获取"
           >
             <Input placeholder="eabecad0-0c6a-4932-aeb4-4ad932280677" disabled={!!editingTeam} size="large" />
           </Form.Item>
@@ -330,7 +292,7 @@ export default function Teams() {
             name="session_token" 
             label="Session Token" 
             rules={[{ required: !editingTeam, message: '请输入 Token' }]} 
-            extra="Headers 中 Authorization: Bearer 后面的内容，约 10 天有效"
+            extra="Headers 中 Authorization: Bearer 后面的内容"
           >
             <TextArea rows={2} placeholder="eyJhbGci..." />
           </Form.Item>
@@ -345,7 +307,7 @@ export default function Teams() {
           <Form.Item 
             name="max_seats" 
             label="最大座位数"
-            extra="Team 的最大成员数量（包括已邀请未接受的）"
+            extra="Team 的最大成员数量"
             initialValue={5}
           >
             <Input type="number" placeholder="5" size="large" />
