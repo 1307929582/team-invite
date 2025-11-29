@@ -1,0 +1,5 @@
+{
+  "$schema": "https://schema.zeabur.app/zeabur.json",
+  "build_command": "npm install && npm run build",
+  "output_dir": "dist"
+}

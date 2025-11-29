@@ -16,8 +16,8 @@ type Team = {
   is_active: boolean
   member_count: number
   max_seats: number
-  group_id?: number | null
-  group_name?: string | null
+  group_id?: number
+  group_name?: string
   created_at: string
 }
 
@@ -37,7 +37,6 @@ export default function Teams() {
   const [form] = Form.useForm()
   const navigate = useNavigate()
   const { teams, setTeams } = useStore()
-  const [filterGroupId, setFilterGroupId] = useState<number | undefined>(undefined)
 
   const fetchTeams = async () => {
     setLoading(true)
@@ -193,26 +192,8 @@ export default function Teams() {
       </div>
 
       <Card bodyStyle={{ padding: 0 }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
-          <Space>
-            <span style={{ color: '#64748b' }}>分组筛选：</span>
-            <Select
-              placeholder="全部分组"
-              allowClear
-              style={{ width: 160 }}
-              value={filterGroupId}
-              onChange={setFilterGroupId}
-            >
-              {groups.map(g => (
-                <Select.Option key={g.id} value={g.id}>
-                  <Space><div style={{ width: 10, height: 10, borderRadius: 2, background: g.color }} />{g.name}</Space>
-                </Select.Option>
-              ))}
-            </Select>
-          </Space>
-        </div>
         <Table 
-          dataSource={filterGroupId ? teams.filter(t => t.group_id === filterGroupId) : teams} 
+          dataSource={teams} 
           columns={columns} 
           rowKey="id" 
           loading={loading} 

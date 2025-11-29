@@ -16,8 +16,6 @@ interface Team {
   member_count: number
   max_seats: number
   token_expires_at?: string
-  group_id?: number | null
-  group_name?: string | null
   created_at: string
 }
 

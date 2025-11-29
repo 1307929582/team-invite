@@ -1,0 +1,23 @@
+# 默认配置：使用 SQLite（简单部署）
+# 如需使用 PostgreSQL，请使用 docker-compose.postgres.yml
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "4567:4567"
+    volumes:
+      - ./backend/data:/app/data
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - DATABASE_URL=sqlite:///./data/app.db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3456:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
