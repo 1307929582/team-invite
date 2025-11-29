@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Input, Button, message, Spin, Result, Steps } from 'antd'
+import { Card, Input, Button, message, Spin, Result, Steps, Alert } from 'antd'
 import { UserOutlined, GiftOutlined, MailOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { publicApi } from '../api'
 
@@ -29,11 +29,20 @@ interface SeatStats {
   available_seats: number
 }
 
+interface SiteConfig {
+  site_title: string
+  site_description: string
+  home_notice: string
+  success_message: string
+  footer_text: string
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<LinuxDOUser | null>(null)
   const [status, setStatus] = useState<UserStatus | null>(null)
   const [seats, setSeats] = useState<SeatStats | null>(null)
+  const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null)
   const [step, setStep] = useState(0)
   
   // 表单
@@ -43,6 +52,15 @@ export default function Home() {
   const [result, setResult] = useState<{ success: boolean; message: string; team?: string } | null>(null)
 
   useEffect(() => {
+    // 获取站点配置
+    publicApi.getSiteConfig().then((res: any) => {
+      setSiteConfig(res)
+      // 更新页面标题
+      if (res.site_title) {
+        document.title = res.site_title
+      }
+    }).catch(() => {})
+    
     // 获取座位统计
     publicApi.getSeats().then((res: any) => setSeats(res)).catch(() => {})
     
@@ -174,12 +192,22 @@ export default function Home() {
             }} 
           />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px', color: '#1a1a2e' }}>
-            ChatGPT Team 自助上车
+            {siteConfig?.site_title || 'ChatGPT Team 自助上车'}
           </h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
-            使用兑换码加入 Team
+            {siteConfig?.site_description || '使用兑换码加入 Team'}
           </p>
         </div>
+
+        {/* 首页公告 */}
+        {siteConfig?.home_notice && (
+          <Alert
+            message={siteConfig.home_notice}
+            type="info"
+            showIcon
+            style={{ marginBottom: 20, borderRadius: 12 }}
+          />
+        )}
 
         {/* 座位统计 */}
         {seats && (
@@ -309,7 +337,7 @@ export default function Home() {
                   </p>
                 )}
                 <p style={{ color: '#f59e0b', fontSize: 13, marginTop: 12 }}>
-                  请查收邮箱并接受邀请
+                  {siteConfig?.success_message || '请查收邮箱并接受邀请'}
                 </p>
               </div>
             }
@@ -319,6 +347,12 @@ export default function Home() {
           />
         )}
 
+        {/* 页脚 */}
+        {siteConfig?.footer_text && (
+          <div style={{ textAlign: 'center', marginTop: 20, color: '#94a3b8', fontSize: 12 }}>
+            {siteConfig.footer_text}
+          </div>
+        )}
 
       </Card>
     </div>

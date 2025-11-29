@@ -27,6 +27,27 @@ def get_config(db: Session, key: str) -> Optional[str]:
     return config.value if config else None
 
 
+# ========== 站点配置 ==========
+class SiteConfig(BaseModel):
+    site_title: str = "ChatGPT Team 自助上车"
+    site_description: str = "使用兑换码加入 Team"
+    home_notice: str = ""  # 首页公告
+    success_message: str = "邀请已发送！请查收邮箱并接受邀请"
+    footer_text: str = ""  # 页脚文字
+
+
+@router.get("/site-config", response_model=SiteConfig)
+async def get_site_config(db: Session = Depends(get_db)):
+    """获取站点配置（公开）"""
+    return SiteConfig(
+        site_title=get_config(db, "site_title") or "ChatGPT Team 自助上车",
+        site_description=get_config(db, "site_description") or "使用兑换码加入 Team",
+        home_notice=get_config(db, "home_notice") or "",
+        success_message=get_config(db, "success_message") or "邀请已发送！请查收邮箱并接受邀请",
+        footer_text=get_config(db, "footer_text") or "",
+    )
+
+
 def get_available_team(db: Session, group_id: Optional[int] = None, group_name: Optional[str] = None) -> Optional[Team]:
     """获取有空位的 Team
     

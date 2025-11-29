@@ -3,6 +3,14 @@ import { useParams } from 'react-router-dom'
 import { Card, Input, Button, message, Spin, Result } from 'antd'
 import { MailOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import axios from 'axios'
+import { publicApi } from '../api'
+
+interface SiteConfig {
+  site_title: string
+  site_description: string
+  success_message: string
+  footer_text: string
+}
 
 export default function DirectInvite() {
   const { code } = useParams<{ code: string }>()
@@ -13,8 +21,17 @@ export default function DirectInvite() {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [teamName, setTeamName] = useState('')
+  const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null)
 
   useEffect(() => {
+    // 获取站点配置
+    publicApi.getSiteConfig().then((res: any) => {
+      setSiteConfig(res)
+      if (res.site_title) {
+        document.title = res.site_title
+      }
+    }).catch(() => {})
+
     if (!code) {
       setError('无效的链接')
       setLoading(false)
@@ -101,7 +118,7 @@ export default function DirectInvite() {
             }} 
           />
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px', color: '#1a1a2e' }}>
-            ChatGPT Team 邀请
+            {siteConfig?.site_title || 'ChatGPT Team 邀请'}
           </h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
             输入邮箱即可加入
@@ -128,7 +145,7 @@ export default function DirectInvite() {
               <div>
                 <p>已加入 {teamName || 'Team'}</p>
                 <p style={{ color: '#f59e0b', fontSize: 13, marginTop: 12 }}>
-                  请查收邮箱并接受邀请
+                  {siteConfig?.success_message || '请查收邮箱并接受邀请'}
                 </p>
               </div>
             }

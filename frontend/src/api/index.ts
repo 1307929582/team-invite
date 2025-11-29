@@ -154,6 +154,7 @@ export const publicApi = {
   redeem: (data: { email: string; redeem_code: string; linuxdo_token: string }) =>
     publicApiClient.post('/redeem', data),
   getSeats: () => publicApiClient.get('/seats'),
+  getSiteConfig: () => publicApiClient.get('/site-config'),
 }
 
 export default api

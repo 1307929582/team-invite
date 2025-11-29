@@ -148,6 +148,7 @@ export default function Settings() {
           <Form.Item 
             name="site_title" 
             label="站点标题"
+            extra="显示在首页和浏览器标签上"
           >
             <Input placeholder="ChatGPT Team 自助上车" size="large" />
           </Form.Item>
@@ -155,8 +156,33 @@ export default function Settings() {
           <Form.Item 
             name="site_description" 
             label="站点描述"
+            extra="显示在首页标题下方"
           >
-            <Input placeholder="使用兑换码加入 ChatGPT Team" size="large" />
+            <Input placeholder="使用兑换码加入 Team" size="large" />
+          </Form.Item>
+
+          <Form.Item 
+            name="home_notice" 
+            label="首页公告"
+            extra="显示在首页的公告信息，留空则不显示"
+          >
+            <Input.TextArea placeholder="例如：限时优惠中..." rows={2} />
+          </Form.Item>
+
+          <Form.Item 
+            name="success_message" 
+            label="成功提示"
+            extra="兑换成功后显示的提示信息"
+          >
+            <Input placeholder="邀请已发送！请查收邮箱并接受邀请" size="large" />
+          </Form.Item>
+
+          <Form.Item 
+            name="footer_text" 
+            label="页脚文字"
+            extra="显示在页面底部，留空则不显示"
+          >
+            <Input placeholder="例如：联系方式、版权信息等" size="large" />
           </Form.Item>
 
           <Form.Item 
