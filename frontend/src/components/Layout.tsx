@@ -48,6 +48,7 @@ const menuItems = [
   { key: '/admin/users', icon: <UserOutlined />, label: 'LinuxDO 用户' },
   { type: 'divider' as const },
   { key: '/admin/logs', icon: <FileTextOutlined />, label: '操作日志' },
+  { key: '/admin/admins', icon: <UserOutlined />, label: '管理员管理' },
   { key: '/admin/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]
 

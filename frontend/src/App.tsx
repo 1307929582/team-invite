@@ -19,6 +19,7 @@ import DirectInvite from './pages/DirectInvite'
 import Groups from './pages/Groups'
 import InviteRecords from './pages/InviteRecords'
 import PendingInvites from './pages/PendingInvites'
+import Admins from './pages/Admins'
 import { useStore } from './store'
 import { authApi, setupApi } from './api'
 
@@ -132,6 +133,7 @@ function App() {
           <Route path="pending-invites" element={<PendingInvites />} />
           <Route path="logs" element={<Logs />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="admins" element={<Admins />} />
         </Route>
       </Routes>
     </BrowserRouter>
