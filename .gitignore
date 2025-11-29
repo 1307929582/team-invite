@@ -24,3 +24,4 @@ Thumbs.db
 
 # Internal docs (not for public)
 SECURITY_CHECKLIST.md
+*.zip
