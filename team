@@ -67,7 +67,7 @@ status() {
     fi
     
     # 数据库
-    if docker compose -f $COMPOSE_FILE ps postgres 2>/dev/null | grep -q "Up"; then
+    if docker compose -f $COMPOSE_FILE ps db 2>/dev/null | grep -q "Up"; then
         echo -e "数据库：${GREEN}运行${NC}"
     else
         echo -e "数据库：${RED}未运行${NC}"
