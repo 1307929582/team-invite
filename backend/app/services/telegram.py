@@ -6,15 +6,23 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+class TelegramError(Exception):
+    """Telegram 发送错误"""
+    def __init__(self, message: str, detail: str = ""):
+        self.message = message
+        self.detail = detail
+        super().__init__(message)
+
+
 async def send_telegram_message(bot_token: str, chat_id: str, message: str) -> bool:
     """发送 Telegram 消息"""
     if not bot_token or not chat_id:
-        return False
+        raise TelegramError("未配置", "请先配置 Bot Token 和 Chat ID")
     
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(url, json={
                 "chat_id": chat_id,
                 "text": message,
@@ -25,11 +33,25 @@ async def send_telegram_message(bot_token: str, chat_id: str, message: str) -> b
                 logger.info(f"Telegram message sent to {chat_id}")
                 return True
             else:
-                logger.warning(f"Telegram send failed: {resp.text}")
-                return False
+                # 解析 Telegram API 错误
+                try:
+                    error_data = resp.json()
+                    error_desc = error_data.get("description", resp.text)
+                except:
+                    error_desc = resp.text
+                logger.warning(f"Telegram send failed: {error_desc}")
+                raise TelegramError("发送失败", error_desc)
+    except TelegramError:
+        raise
+    except httpx.TimeoutException:
+        logger.error("Telegram timeout")
+        raise TelegramError("连接超时", "无法连接到 Telegram 服务器，请检查网络或代理设置")
+    except httpx.ConnectError as e:
+        logger.error(f"Telegram connect error: {e}")
+        raise TelegramError("连接失败", "无法连接到 Telegram 服务器，服务器可能需要配置代理")
     except Exception as e:
         logger.error(f"Telegram error: {e}")
-        return False
+        raise TelegramError("发送失败", str(e))
 
 
 async def notify_new_invite(

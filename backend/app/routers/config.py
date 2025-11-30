@@ -172,6 +172,8 @@ async def test_telegram(
     current_user: User = Depends(get_current_user)
 ):
     """发送测试 Telegram 消息"""
+    from app.services.telegram import TelegramError
+    
     bot_token = get_config_value(db, "telegram_bot_token")
     chat_id = get_config_value(db, "telegram_chat_id")
     
@@ -179,12 +181,12 @@ async def test_telegram(
         raise HTTPException(status_code=400, detail="请先配置 Telegram Bot Token 和 Chat ID")
     
     message = "🔔 <b>测试消息</b>\n\n这是一条测试消息，如果您收到此消息，说明 Telegram 配置正确。"
-    success = await send_telegram_message(bot_token, chat_id, message)
     
-    if success:
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
         return {"message": "测试消息已发送，请检查 Telegram"}
-    else:
-        raise HTTPException(status_code=400, detail="消息发送失败，请检查 Bot Token 和 Chat ID")
+    except TelegramError as e:
+        raise HTTPException(status_code=400, detail=f"{e.message}: {e.detail}")
 
 
 def get_config_value(db: Session, key: str, default: str = "") -> str:
