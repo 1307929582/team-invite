@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models import SystemConfig, User, Team
 from app.services.auth import get_current_user
 from app.services.email import send_email, send_alert_email
+from app.services.telegram import send_telegram_message
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -50,6 +51,12 @@ DEFAULT_CONFIGS = [
     {"key": "email_enabled", "description": "是否启用邮件通知"},
     {"key": "alert_member_threshold", "description": "超员预警阈值（默认5）"},
     {"key": "alert_token_days", "description": "Token过期预警天数（默认7）"},
+    # Telegram 通知配置
+    {"key": "telegram_bot_token", "description": "Telegram Bot Token"},
+    {"key": "telegram_chat_id", "description": "Telegram Chat ID（群组或个人）"},
+    {"key": "telegram_enabled", "description": "是否启用 Telegram 通知"},
+    {"key": "telegram_notify_invite", "description": "新用户上车时通知"},
+    {"key": "telegram_notify_alert", "description": "座位预警时通知"},
 ]
 
 
@@ -159,6 +166,27 @@ async def test_email(
         raise HTTPException(status_code=400, detail="邮件发送失败，请检查 SMTP 配置")
 
 
+@router.post("/test-telegram")
+async def test_telegram(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """发送测试 Telegram 消息"""
+    bot_token = get_config_value(db, "telegram_bot_token")
+    chat_id = get_config_value(db, "telegram_chat_id")
+    
+    if not bot_token or not chat_id:
+        raise HTTPException(status_code=400, detail="请先配置 Telegram Bot Token 和 Chat ID")
+    
+    message = "🔔 <b>测试消息</b>\n\n这是一条测试消息，如果您收到此消息，说明 Telegram 配置正确。"
+    success = await send_telegram_message(bot_token, chat_id, message)
+    
+    if success:
+        return {"message": "测试消息已发送，请检查 Telegram"}
+    else:
+        raise HTTPException(status_code=400, detail="消息发送失败，请检查 Bot Token 和 Chat ID")
+
+
 def get_config_value(db: Session, key: str, default: str = "") -> str:
     """获取配置值"""
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
@@ -259,4 +287,34 @@ async def check_alerts(
     if alerts:
         send_alert_email(db, alerts)
     
+    # 发送 Telegram 预警
+    await send_telegram_alerts(db, alerts)
+    
     return {"message": f"检查完成，发现 {len(alerts)} 个预警", "alerts": alerts}
+
+
+async def send_telegram_alerts(db: Session, alerts: list):
+    """发送 Telegram 预警通知"""
+    from app.services.telegram import send_telegram_message
+    
+    tg_enabled = get_config_value(db, "telegram_enabled")
+    notify_alert = get_config_value(db, "telegram_notify_alert")
+    
+    if tg_enabled != "true" or notify_alert != "true":
+        return
+    
+    bot_token = get_config_value(db, "telegram_bot_token")
+    chat_id = get_config_value(db, "telegram_chat_id")
+    
+    if not bot_token or not chat_id:
+        return
+    
+    if not alerts:
+        return
+    
+    message = "⚠️ <b>系统预警</b>\n\n"
+    for alert in alerts:
+        icon = "🔴" if alert["type"] == "error" else "🟡"
+        message += f"{icon} <b>{alert['team']}</b>\n   {alert['message']}\n\n"
+    
+    await send_telegram_message(bot_token, chat_id, message)

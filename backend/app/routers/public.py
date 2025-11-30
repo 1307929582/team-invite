@@ -14,6 +14,7 @@ from app.models import (
     SystemConfig, OperationLog
 )
 from app.services.chatgpt_api import ChatGPTAPI, ChatGPTAPIError
+from app.services.telegram import notify_new_invite
 from app.limiter import limiter
 from app.logger import get_logger
 
@@ -25,6 +26,24 @@ def get_config(db: Session, key: str) -> Optional[str]:
     """获取系统配置"""
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
     return config.value if config else None
+
+
+async def send_invite_telegram_notify(db: Session, email: str, team_name: str, redeem_code: str, username: str = None):
+    """发送邀请成功的 Telegram 通知"""
+    try:
+        tg_enabled = get_config(db, "telegram_enabled")
+        notify_invite = get_config(db, "telegram_notify_invite")
+        
+        if tg_enabled != "true" or notify_invite != "true":
+            return
+        
+        bot_token = get_config(db, "telegram_bot_token")
+        chat_id = get_config(db, "telegram_chat_id")
+        
+        if bot_token and chat_id:
+            await notify_new_invite(bot_token, chat_id, email, team_name, redeem_code, username)
+    except Exception as e:
+        logger.warning(f"Telegram notify failed: {e}")
 
 
 # ========== 站点配置 ==========
@@ -426,6 +445,9 @@ async def use_redeem_code(request: Request, data: RedeemRequest, db: Session = D
         db.add(log)
         db.commit()
         
+        # 发送 Telegram 通知
+        await send_invite_telegram_notify(db, data.email, available_team.name, code.code, user.username)
+        
         return RedeemResponse(
             success=True,
             message="邀请已发送！请查收邮箱并接受邀请",
@@ -540,6 +562,9 @@ async def direct_redeem(request: Request, data: DirectRedeemRequest, db: Session
         )
         db.add(log)
         db.commit()
+        
+        # 发送 Telegram 通知
+        await send_invite_telegram_notify(db, data.email, available_team.name, code.code)
         
         return DirectRedeemResponse(
             success=True,
