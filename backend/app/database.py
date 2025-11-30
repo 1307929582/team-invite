@@ -30,8 +30,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
-    """初始化数据库表"""
-    Base.metadata.create_all(bind=engine)
+    """初始化数据库表（跳过已存在的）"""
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    
+    # 只创建不存在的表
+    Base.metadata.create_all(bind=engine, checkfirst=True)
 
 
 def get_db():
