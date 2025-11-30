@@ -24,6 +24,7 @@ import OAuthSettings from './pages/settings/OAuthSettings'
 import SiteSettings from './pages/settings/SiteSettings'
 import EmailSettings from './pages/settings/EmailSettings'
 import AlertSettings from './pages/settings/AlertSettings'
+import TelegramSettings from './pages/settings/TelegramSettings'
 import { useStore } from './store'
 import { authApi, setupApi } from './api'
 
@@ -141,6 +142,7 @@ function App() {
           <Route path="settings/site" element={<SiteSettings />} />
           <Route path="settings/email" element={<EmailSettings />} />
           <Route path="settings/alerts" element={<AlertSettings />} />
+          <Route path="settings/telegram" element={<TelegramSettings />} />
           <Route path="admins" element={<Admins />} />
         </Route>
       </Routes>

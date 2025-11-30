@@ -72,3 +72,49 @@ async def notify_seat_alert(
     message += f"\n预警阈值: 剩余 {threshold} 个座位"
     
     await send_telegram_message(bot_token, chat_id, message)
+
+
+async def notify_token_expiry(
+    bot_token: str,
+    chat_id: str,
+    team_name: str,
+    days_left: int
+):
+    """Token 过期提醒"""
+    if days_left <= 0:
+        message = f"🔴 <b>Token 已过期</b>\n\n"
+        message += f"👥 Team: {team_name}\n"
+        message += f"⚠️ Token 已过期，请立即更新！"
+    elif days_left <= 3:
+        message = f"🟠 <b>Token 即将过期</b>\n\n"
+        message += f"👥 Team: {team_name}\n"
+        message += f"⏰ 剩余时间: {days_left} 天\n"
+        message += f"⚠️ 请尽快更新 Token！"
+    else:
+        message = f"🟡 <b>Token 过期提醒</b>\n\n"
+        message += f"👥 Team: {team_name}\n"
+        message += f"⏰ 剩余时间: {days_left} 天"
+    
+    await send_telegram_message(bot_token, chat_id, message)
+
+
+async def notify_daily_stats(
+    bot_token: str,
+    chat_id: str,
+    total_teams: int,
+    total_seats: int,
+    used_seats: int,
+    today_invites: int
+):
+    """每日统计通知"""
+    available = total_seats - used_seats
+    usage_rate = int((used_seats / total_seats) * 100) if total_seats > 0 else 0
+    
+    message = f"📊 <b>每日统计</b>\n\n"
+    message += f"👥 Team 数量: {total_teams}\n"
+    message += f"💺 总座位: {total_seats}\n"
+    message += f"✅ 已使用: {used_seats} ({usage_rate}%)\n"
+    message += f"🔓 可用: {available}\n"
+    message += f"📨 今日邀请: {today_invites}"
+    
+    await send_telegram_message(bot_token, chat_id, message)

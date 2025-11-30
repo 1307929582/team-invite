@@ -103,6 +103,7 @@ export const configApi = {
   batchUpdate: (configs: { key: string; value: string; description?: string | null }[]) => 
     api.post('/config/batch', configs),
   testEmail: () => api.post('/config/test-email'),
+  testTelegram: () => api.post('/config/test-telegram'),
   checkAlerts: () => api.post('/config/check-alerts'),
 }
 

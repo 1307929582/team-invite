@@ -31,6 +31,13 @@ const settingModules = [
     path: '/admin/settings/email',
   },
   {
+    key: 'telegram',
+    title: 'Telegram 通知',
+    description: '配置 Telegram Bot 推送',
+    icon: <BellOutlined style={{ fontSize: 28, color: '#0088cc' }} />,
+    path: '/admin/settings/telegram',
+  },
+  {
     key: 'alerts',
     title: '预警设置',
     description: '配置预警阈值和规则',
