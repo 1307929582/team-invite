@@ -37,24 +37,12 @@ def is_system_initialized(db: Session) -> bool:
 
 @router.get("/status", response_model=SetupStatus)
 async def get_setup_status(db: Session = Depends(get_db)):
-    """获取系统初始化状态（公开接口，带缓存）"""
-    from app.cache import get_setup_status_cache, set_setup_status_cache
-    
-    # 尝试从缓存获取
-    cached = get_setup_status_cache()
-    if cached:
-        return SetupStatus(**cached)
-    
-    # 从数据库获取
+    """获取系统初始化状态（公开接口，不缓存）"""
     initialized = is_system_initialized(db)
-    result = SetupStatus(
+    return SetupStatus(
         initialized=initialized,
         has_admin=initialized
     )
-    
-    # 写入缓存
-    set_setup_status_cache(result.model_dump())
-    return result
 
 
 @router.post("/initialize", response_model=SetupResponse)
