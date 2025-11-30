@@ -140,3 +140,142 @@ async def notify_daily_stats(
     message += f"📨 今日邀请: {today_invites}"
     
     await send_telegram_message(bot_token, chat_id, message)
+
+
+# ========== 管理操作通知 ==========
+
+async def notify_team_created(bot_token: str, chat_id: str, team_name: str, max_seats: int, operator: str):
+    """通知新建 Team"""
+    message = f"➕ <b>新建 Team</b>\n\n"
+    message += f"👥 名称: {team_name}\n"
+    message += f"💺 座位数: {max_seats}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_team_deleted(bot_token: str, chat_id: str, team_name: str, operator: str):
+    """通知删除 Team"""
+    message = f"🗑️ <b>删除 Team</b>\n\n"
+    message += f"👥 名称: {team_name}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_member_removed(bot_token: str, chat_id: str, email: str, team_name: str, operator: str):
+    """通知移除成员"""
+    message = f"👋 <b>移除成员</b>\n\n"
+    message += f"📧 邮箱: <code>{email}</code>\n"
+    message += f"👥 Team: {team_name}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_invite_cancelled(bot_token: str, chat_id: str, email: str, team_name: str, operator: str):
+    """通知取消邀请"""
+    message = f"❌ <b>取消邀请</b>\n\n"
+    message += f"📧 邮箱: <code>{email}</code>\n"
+    message += f"👥 Team: {team_name}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_redeem_codes_created(bot_token: str, chat_id: str, count: int, code_type: str, max_uses: int, operator: str):
+    """通知创建兑换码"""
+    type_name = "直接链接" if code_type == "direct" else "LinuxDO"
+    message = f"🎫 <b>创建兑换码</b>\n\n"
+    message += f"📦 数量: {count} 个\n"
+    message += f"🏷️ 类型: {type_name}\n"
+    message += f"🔢 每码可用: {max_uses} 次\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_admin_created(bot_token: str, chat_id: str, username: str, role: str, operator: str):
+    """通知创建管理员"""
+    role_name = "管理员" if role == "admin" else "操作员"
+    message = f"👤 <b>新建管理员</b>\n\n"
+    message += f"📛 用户名: {username}\n"
+    message += f"🔑 角色: {role_name}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+async def notify_batch_invite(bot_token: str, chat_id: str, team_name: str, total: int, success: int, fail: int, operator: str):
+    """通知批量邀请"""
+    message = f"📨 <b>批量邀请</b>\n\n"
+    message += f"👥 Team: {team_name}\n"
+    message += f"📊 总数: {total}\n"
+    message += f"✅ 成功: {success}\n"
+    message += f"❌ 失败: {fail}\n"
+    message += f"👤 操作人: {operator}"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass
+
+
+# ========== 统一通知入口 ==========
+
+async def send_admin_notification(db, action: str, **kwargs):
+    """统一的管理操作通知入口
+    
+    自动从数据库获取 Telegram 配置并发送通知
+    """
+    from app.models import SystemConfig
+    
+    def get_config(key: str) -> str:
+        config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
+        return config.value if config and config.value else ""
+    
+    # 检查是否启用
+    if get_config("telegram_enabled") != "true":
+        return
+    
+    bot_token = get_config("telegram_bot_token")
+    chat_id = get_config("telegram_chat_id")
+    
+    if not bot_token or not chat_id:
+        return
+    
+    try:
+        if action == "team_created":
+            await notify_team_created(bot_token, chat_id, kwargs.get("team_name", ""), kwargs.get("max_seats", 0), kwargs.get("operator", ""))
+        elif action == "team_deleted":
+            await notify_team_deleted(bot_token, chat_id, kwargs.get("team_name", ""), kwargs.get("operator", ""))
+        elif action == "member_removed":
+            await notify_member_removed(bot_token, chat_id, kwargs.get("email", ""), kwargs.get("team_name", ""), kwargs.get("operator", ""))
+        elif action == "invite_cancelled":
+            await notify_invite_cancelled(bot_token, chat_id, kwargs.get("email", ""), kwargs.get("team_name", ""), kwargs.get("operator", ""))
+        elif action == "redeem_codes_created":
+            await notify_redeem_codes_created(bot_token, chat_id, kwargs.get("count", 0), kwargs.get("code_type", ""), kwargs.get("max_uses", 0), kwargs.get("operator", ""))
+        elif action == "admin_created":
+            await notify_admin_created(bot_token, chat_id, kwargs.get("username", ""), kwargs.get("role", ""), kwargs.get("operator", ""))
+        elif action == "batch_invite":
+            await notify_batch_invite(bot_token, chat_id, kwargs.get("team_name", ""), kwargs.get("total", 0), kwargs.get("success", 0), kwargs.get("fail", 0), kwargs.get("operator", ""))
+    except Exception as e:
+        logger.warning(f"Admin notification failed: {e}")

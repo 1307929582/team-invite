@@ -139,6 +139,10 @@ async def batch_create_codes(
     
     db.commit()
     
+    # 发送 Telegram 通知
+    from app.services.telegram import send_admin_notification
+    await send_admin_notification(db, "redeem_codes_created", count=len(codes), code_type=data.code_type, max_uses=data.max_uses, operator=current_user.username)
+    
     return BatchCreateResponse(codes=codes, count=len(codes))
 
 

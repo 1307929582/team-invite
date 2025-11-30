@@ -92,6 +92,10 @@ async def create_admin(
     db.commit()
     db.refresh(user)
     
+    # 发送 Telegram 通知
+    from app.services.telegram import send_admin_notification
+    await send_admin_notification(db, "admin_created", username=user.username, role=data.role, operator=current_user.username)
+    
     return AdminResponse(
         id=user.id,
         username=user.username,

@@ -86,22 +86,15 @@ async def invite_members(
     
     # 发送 Telegram 通知
     try:
-        from app.services.telegram import notify_new_invite
-        from app.models import SystemConfig
-        
-        def get_config(key: str) -> str:
-            config = db.query(SystemConfig).filter(SystemConfig.key == key).first()
-            return config.value if config and config.value else ""
-        
-        tg_enabled = get_config("telegram_enabled")
-        notify_invite = get_config("telegram_notify_invite")
-        
-        if tg_enabled == "true" and notify_invite == "true":
-            bot_token = get_config("telegram_bot_token")
-            chat_id = get_config("telegram_chat_id")
-            if bot_token and chat_id:
-                for email in invite_data.emails:
-                    await notify_new_invite(bot_token, chat_id, str(email), team.name, None, f"管理员({current_user.username})")
+        from app.services.telegram import send_admin_notification
+        await send_admin_notification(
+            db, "batch_invite",
+            team_name=team.name,
+            total=len(invite_data.emails),
+            success=success_count,
+            fail=fail_count,
+            operator=current_user.username
+        )
     except Exception as e:
         # Telegram 发送失败不影响主流程
         pass

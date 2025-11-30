@@ -74,6 +74,11 @@ async def create_team(
     db.add(team)
     db.commit()
     db.refresh(team)
+    
+    # 发送 Telegram 通知
+    from app.services.telegram import send_admin_notification
+    await send_admin_notification(db, "team_created", team_name=team.name, max_seats=team.max_seats, operator=current_user.username)
+    
     return team
 
 
@@ -266,8 +271,14 @@ async def delete_team(
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
     
+    team_name = team.name
     team.is_active = False
     db.commit()
+    
+    # 发送 Telegram 通知
+    from app.services.telegram import send_admin_notification
+    await send_admin_notification(db, "team_deleted", team_name=team_name, operator=current_user.username)
+    
     return MessageResponse(message="Team 已删除")
 
 
@@ -463,6 +474,13 @@ async def remove_team_member(
     if not team:
         raise HTTPException(status_code=404, detail="Team 不存在")
     
+    # 先获取成员邮箱用于通知
+    member = db.query(TeamMember).filter(
+        TeamMember.team_id == team_id,
+        TeamMember.chatgpt_user_id == user_id
+    ).first()
+    member_email = member.email if member else user_id
+    
     try:
         api = ChatGPTAPI(team.session_token, team.device_id or "", team.cookie or "")
         await api.remove_member(team.account_id, user_id)
@@ -476,6 +494,10 @@ async def remove_team_member(
         
         # 清除 Redis 缓存
         invalidate_team_cache(team_id)
+        
+        # 发送 Telegram 通知
+        from app.services.telegram import send_admin_notification
+        await send_admin_notification(db, "member_removed", email=member_email, team_name=team.name, operator=current_user.username)
         
         return MessageResponse(message="成员已移除")
     except ChatGPTAPIError as e:
@@ -502,6 +524,10 @@ async def cancel_team_invite(
         
         # 清除 Redis 缓存
         invalidate_team_cache(team_id)
+        
+        # 发送 Telegram 通知
+        from app.services.telegram import send_admin_notification
+        await send_admin_notification(db, "invite_cancelled", email=email, team_name=team.name, operator=current_user.username)
         
         return MessageResponse(message="邀请已取消")
     except ChatGPTAPIError as e:
