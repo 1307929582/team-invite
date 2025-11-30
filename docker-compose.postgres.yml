@@ -18,25 +18,6 @@ services:
       timeout: 5s
       retries: 5
 
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    environment:
-      - DATABASE_URL=postgres://${POSTGRES_USER:-teamadmin}:${POSTGRES_PASSWORD:-teampassword}@db:5432/${POSTGRES_DB:-team_manager}
-      - POOL_MODE=transaction
-      - MAX_CLIENT_CONN=1000
-      - DEFAULT_POOL_SIZE=50
-      - MIN_POOL_SIZE=10
-      - RESERVE_POOL_SIZE=25
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     volumes:
@@ -56,10 +37,10 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-teamadmin}:${POSTGRES_PASSWORD:-teampassword}@pgbouncer:5432/${POSTGRES_DB:-team_manager}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-teamadmin}:${POSTGRES_PASSWORD:-teampassword}@db:5432/${POSTGRES_DB:-team_manager}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
-      pgbouncer:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
