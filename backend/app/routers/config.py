@@ -16,8 +16,8 @@ router = APIRouter(prefix="/config", tags=["config"])
 
 class ConfigItem(BaseModel):
     key: str
-    value: Optional[str]
-    description: Optional[str]
+    value: Optional[str] = None
+    description: Optional[str] = None
 
 
 class ConfigResponse(BaseModel):
