@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Table, Button, Space, Tag, Descriptions, Spin, Input, message, Row, Col, Progress } from 'antd'
-import { ArrowLeftOutlined, SyncOutlined, SearchOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Space, Tag, Descriptions, Spin, Input, message, Row, Col, Progress, Alert } from 'antd'
+import { ArrowLeftOutlined, SyncOutlined, SearchOutlined, DownloadOutlined, DeleteOutlined, WarningOutlined } from '@ant-design/icons'
 import { Popconfirm } from 'antd'
 import { teamApi } from '../api'
 import { formatDate, formatDateOnly, toLocalDate } from '../utils/date'
 import dayjs from 'dayjs'
 
 interface Team { id: number; name: string; description?: string; account_id: string; is_active: boolean; member_count: number; created_at: string }
-interface Member { id: number; email: string; name?: string; role: string; synced_at: string; created_time?: string; chatgpt_user_id?: string }
+interface Member { id: number; email: string; name?: string; role: string; synced_at: string; created_time?: string; chatgpt_user_id?: string; is_unauthorized?: boolean }
 interface Subscription { plan_type: string; seats_in_use: number; seats_entitled: number; active_until: string; will_renew: boolean; billing_period: string }
 interface PendingInvite { id: string; email_address: string; role: string; created_time: string }
 
@@ -104,8 +104,24 @@ export default function TeamDetail() {
     } catch {}
   }
 
+  const unauthorizedMembers = members.filter(m => m.is_unauthorized)
+
   const memberColumns = [
-    { title: '邮箱', dataIndex: 'email', ellipsis: true },
+    { 
+      title: '邮箱', 
+      dataIndex: 'email', 
+      ellipsis: true,
+      render: (v: string, r: Member) => (
+        <span>
+          {v}
+          {r.is_unauthorized && (
+            <Tag color="red" style={{ marginLeft: 8 }}>
+              <WarningOutlined /> 未授权
+            </Tag>
+          )}
+        </span>
+      )
+    },
     { title: '姓名', dataIndex: 'name', width: 140, render: (v: string) => v || '-' },
     { title: '角色', dataIndex: 'role', width: 120, render: (v: string) => <Tag color={v === 'account-owner' ? 'gold' : 'blue'}>{v === 'account-owner' ? '管理员' : '成员'}</Tag> },
     { title: '加入时间', dataIndex: 'created_time', width: 160, render: (v: string) => v ? <span style={{ color: '#64748b' }}>{formatDate(v, 'YYYY-MM-DD HH:mm')}</span> : '-' },
@@ -220,6 +236,27 @@ export default function TeamDetail() {
           <Descriptions.Item label="创建时间">{formatDate(team?.created_at, 'YYYY-MM-DD HH:mm')}</Descriptions.Item>
         </Descriptions>
       </Card>
+
+      {/* 未授权成员警告 */}
+      {unauthorizedMembers.length > 0 && (
+        <Alert
+          message={`发现 ${unauthorizedMembers.length} 个未授权成员`}
+          description={
+            <div>
+              <p style={{ margin: '8px 0' }}>以下成员不是通过系统邀请的，可能是有人私自拉人进 Team：</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {unauthorizedMembers.map(m => (
+                  <Tag key={m.id} color="red">{m.email}</Tag>
+                ))}
+              </div>
+            </div>
+          }
+          type="error"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 20 }}
+        />
+      )}
 
       {/* 成员列表 */}
       <Card

@@ -277,5 +277,30 @@ async def send_admin_notification(db, action: str, **kwargs):
             await notify_admin_created(bot_token, chat_id, kwargs.get("username", ""), kwargs.get("role", ""), kwargs.get("operator", ""))
         elif action == "batch_invite":
             await notify_batch_invite(bot_token, chat_id, kwargs.get("team_name", ""), kwargs.get("total", 0), kwargs.get("success", 0), kwargs.get("fail", 0), kwargs.get("operator", ""))
+        elif action == "unauthorized_members":
+            await notify_unauthorized_members(bot_token, chat_id, kwargs.get("team_name", ""), kwargs.get("members", []))
     except Exception as e:
         logger.warning(f"Admin notification failed: {e}")
+
+
+async def notify_unauthorized_members(bot_token: str, chat_id: str, team_name: str, members: list):
+    """通知发现未授权成员"""
+    if not members:
+        return
+    
+    message = f"🚨 <b>发现未授权成员</b>\n\n"
+    message += f"👥 Team: {team_name}\n"
+    message += f"⚠️ 以下成员不是通过系统邀请的：\n\n"
+    
+    for email in members[:10]:  # 最多显示10个
+        message += f"• <code>{email}</code>\n"
+    
+    if len(members) > 10:
+        message += f"\n... 还有 {len(members) - 10} 个\n"
+    
+    message += f"\n💡 请检查是否有人私自拉人进 Team"
+    
+    try:
+        await send_telegram_message(bot_token, chat_id, message)
+    except:
+        pass

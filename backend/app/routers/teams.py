@@ -350,28 +350,64 @@ async def sync_team_members(
     
     print(f"[Sync] Team {team.name}: 更新了 {updated_count} 条邀请记录")
     
+    # 获取所有通过系统邀请的邮箱（成功的邀请记录）
+    invited_emails = set()
+    all_invites = db.query(InviteRecord).filter(
+        InviteRecord.team_id == team_id,
+        InviteRecord.status == InviteStatus.SUCCESS
+    ).all()
+    for inv in all_invites:
+        invited_emails.add(inv.email.lower().strip())
+    
+    # 获取管理员邮箱（不检查管理员）
+    admin_emails = set()
+    admins = db.query(User).filter(User.is_active == True).all()
+    for admin in admins:
+        admin_emails.add(admin.email.lower().strip())
+    
+    print(f"[Sync] Team {team.name}: 系统邀请邮箱 = {invited_emails}")
+    print(f"[Sync] Team {team.name}: 管理员邮箱 = {admin_emails}")
+    
     # 清除旧成员数据
     db.query(TeamMember).filter(TeamMember.team_id == team_id).delete()
     
-    # 插入新成员数据（去重）
+    # 插入新成员数据（去重），并检测未授权成员
     seen_emails = set()
+    unauthorized_members = []
+    
     for m in members_data:
         email = m.get("email", "").lower().strip()
         if not email or email in seen_emails:
             continue
         seen_emails.add(email)
         
+        # 检查是否为未授权成员
+        # owner 角色不检查（Team 所有者）
+        member_role = m.get("role", "member")
+        is_unauthorized = False
+        if member_role != "owner":
+            if email not in invited_emails and email not in admin_emails:
+                is_unauthorized = True
+                unauthorized_members.append(email)
+        
         member = TeamMember(
             team_id=team_id,
             email=email,
             name=m.get("name", m.get("display_name", "")),
-            role=m.get("role", "member"),
+            role=member_role,
             chatgpt_user_id=m.get("id", m.get("user_id", "")),
-            synced_at=datetime.utcnow()
+            synced_at=datetime.utcnow(),
+            is_unauthorized=is_unauthorized
         )
         db.add(member)
     
     db.commit()
+    
+    # 如果发现未授权成员，发送 Telegram 通知
+    if unauthorized_members:
+        print(f"[Sync] Team {team.name}: 发现 {len(unauthorized_members)} 个未授权成员: {unauthorized_members}")
+        from app.services.telegram import send_admin_notification
+        await send_admin_notification(db, "unauthorized_members", team_name=team.name, members=unauthorized_members)
     
     members = db.query(TeamMember).filter(TeamMember.team_id == team_id).all()
     return TeamMemberListResponse(

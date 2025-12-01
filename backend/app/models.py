@@ -72,6 +72,7 @@ class TeamMember(Base):
     chatgpt_user_id = Column(String(100), nullable=True)
     joined_at = Column(DateTime, nullable=True)
     synced_at = Column(DateTime, default=datetime.utcnow)
+    is_unauthorized = Column(Boolean, default=False)  # 是否为未授权成员（非系统邀请）
     
     team = relationship("Team", back_populates="members")
 

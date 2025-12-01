@@ -91,6 +91,7 @@ class TeamMemberResponse(BaseModel):
     chatgpt_user_id: Optional[str]
     joined_at: Optional[datetime]
     synced_at: datetime
+    is_unauthorized: bool = False  # 是否为未授权成员
     
     class Config:
         from_attributes = True
