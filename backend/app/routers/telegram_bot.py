@@ -108,6 +108,9 @@ async def handle_interactive(text: str, user_id: str, chat_id: str, db: Session,
 
 async def handle_command(text: str, user_id: str, chat_id: str, db: Session, bot_token: str, is_admin: bool):
     text = text.strip()
+    # 去掉 @bot_username 后缀，如 /start@MyBot -> /start
+    if "@" in text:
+        text = text.split("@")[0]
     if text == "/start" or text == "/help":
         msg = "<b>🤖 ChatGPT Team 管理助手</b>\n\n<i>━━━━━ 查询命令 ━━━━━</i>\n\n"
         msg += "📊 /status - 系统概览\n💺 /seats - 座位统计\n👥 /teams - Team 列表\n"
