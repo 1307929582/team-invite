@@ -121,6 +121,11 @@ async def handle_command(text: str, user_id: str, chat_id: str, db: Session, bot
         await send_telegram_message(bot_token, chat_id, msg)
         return
 
+    if text == "/cancel":
+        clear_session(user_id)
+        await send_telegram_message(bot_token, chat_id, "✅ 已取消当前操作")
+        return
+
     if text == "/status":
         teams = db.query(Team).filter(Team.is_active == True).all()
         total_seats = sum(t.max_seats for t in teams)
