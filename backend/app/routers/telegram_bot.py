@@ -174,15 +174,16 @@ async def handle_command(text: str, user_id: str, chat_id: str, db: Session, bot
         return
 
     if text == "/stats":
+        from app.models import InviteStatus
         today = datetime.utcnow().date()
         today_start = datetime.combine(today, datetime.min.time())
         ti = db.query(InviteRecord).filter(InviteRecord.created_at >= today_start).count()
-        tj = db.query(InviteRecord).filter(InviteRecord.created_at >= today_start, InviteRecord.status == "joined").count()
+        tj = db.query(InviteRecord).filter(InviteRecord.created_at >= today_start, InviteRecord.status == InviteStatus.SUCCESS).count()
         tc = db.query(RedeemCode).filter(RedeemCode.used_at >= today_start).count()
         week_start = today_start - timedelta(days=today.weekday())
         wi = db.query(InviteRecord).filter(InviteRecord.created_at >= week_start).count()
-        wj = db.query(InviteRecord).filter(InviteRecord.created_at >= week_start, InviteRecord.status == "joined").count()
-        msg = f"<b>📈 统计</b>\n\n<b>今日</b>: 邀请{ti} 加入{tj} 兑换{tc}\n<b>本周</b>: 邀请{wi} 加入{wj}"
+        wj = db.query(InviteRecord).filter(InviteRecord.created_at >= week_start, InviteRecord.status == InviteStatus.SUCCESS).count()
+        msg = f"<b>📈 统计</b>\n\n<b>今日</b>: 邀请{ti} 成功{tj} 兑换{tc}\n<b>本周</b>: 邀请{wi} 成功{wj}"
         await send_telegram_message(bot_token, chat_id, msg)
         return
 
