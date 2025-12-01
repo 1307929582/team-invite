@@ -366,30 +366,18 @@ async def use_redeem_code(request: Request, data: RedeemRequest, db: Session = D
 
 
 async def _do_redeem(data: RedeemRequest, db: Session):
-    """实际执行兑换逻辑"""
+    """实际执行兑换逻辑 - 排队模式"""
+    from app.tasks import enqueue_invite
+    from app.models import TeamGroup
+    
     # 验证用户
     user = get_linuxdo_user_from_token(db, data.linuxdo_token)
     
-    # 防止暴力破解：检查该用户最近的失败尝试次数
-    from datetime import timedelta
-    recent_time = datetime.utcnow() - timedelta(minutes=5)
-    recent_failed = db.query(InviteRecord).filter(
-        InviteRecord.linuxdo_user_id == user.id,
-        InviteRecord.status == InviteStatus.FAILED,
-        InviteRecord.created_at >= recent_time
-    ).count()
-    
-    if recent_failed >= 5:
-        raise HTTPException(
-            status_code=429, 
-            detail="尝试次数过多，请5分钟后再试"
-        )
-    
-    # 验证兑换码（加锁防止并发）
+    # 验证兑换码
     code = db.query(RedeemCode).filter(
         RedeemCode.code == data.redeem_code.strip().upper(),
         RedeemCode.is_active == True
-    ).with_for_update().first()
+    ).first()
     
     if not code:
         raise HTTPException(status_code=400, detail="兑换码无效")
@@ -400,7 +388,7 @@ async def _do_redeem(data: RedeemRequest, db: Session):
     if code.used_count >= code.max_uses:
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
-    # 原子性增加使用次数，防止并发超额
+    # 原子性增加使用次数
     from sqlalchemy import update
     result = db.execute(
         update(RedeemCode)
@@ -410,61 +398,33 @@ async def _do_redeem(data: RedeemRequest, db: Session):
     )
     
     if result.rowcount == 0:
-        db.rollback()
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
-    # 查找有空位的 Team
-    # LinuxDO 类型兑换码：优先使用 code.group_id，否则强制使用 "LinuxDO" 分组
-    if code.group_id:
-        available_team = get_available_team(db, group_id=code.group_id)
-    else:
-        # 没有指定分组时，LinuxDO 兑换码强制使用 LinuxDO 分组
-        available_team = get_available_team(db, group_name="LinuxDO")
+    db.commit()
     
-    if not available_team:
-        raise HTTPException(status_code=400, detail="所有 Team 已满，请稍后再试")
+    # 确定分组 ID
+    group_id = code.group_id
+    if not group_id:
+        # 默认使用 LinuxDO 分组
+        group = db.query(TeamGroup).filter(TeamGroup.name == "LinuxDO").first()
+        group_id = group.id if group else None
     
-    # 发送邀请
+    # 加入队列
     try:
-        api = ChatGPTAPI(available_team.session_token, available_team.device_id or "")
-        result = await api.invite_members(
-            available_team.account_id, 
-            [data.email.lower().strip()]
-        )
-        
-        # 记录邀请（使用次数已在前面原子更新）
-        invite = InviteRecord(
-            team_id=available_team.id,
+        await enqueue_invite(
             email=data.email.lower().strip(),
-            linuxdo_user_id=user.id,
-            status=InviteStatus.SUCCESS,
             redeem_code=code.code,
-            batch_id=f"redeem-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            group_id=group_id,
+            linuxdo_user_id=user.id
         )
-        db.add(invite)
-        
-        # 记录操作日志
-        log = OperationLog(
-            action="自助邀请",
-            target=data.email.lower().strip(),
-            team_id=available_team.id,
-            details=f"LinuxDO用户 {user.username} 使用兑换码 {code.code} 邀请 {data.email}"
-        )
-        db.add(log)
-        db.commit()
-        
-        # 发送 Telegram 通知
-        await send_invite_telegram_notify(db, data.email, available_team.name, code.code, user.username)
         
         return RedeemResponse(
             success=True,
-            message="邀请已发送！请查收邮箱并接受邀请",
-            team_name=available_team.name
+            message="已加入队列，邀请将在几秒内发送，请稍后查收邮箱",
+            team_name=None
         )
-    except ChatGPTAPIError as e:
-        raise HTTPException(status_code=400, detail=f"邀请失败: {e.message}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"邀请失败: {str(e)}")
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 # ========== 直接链接兑换（无需登录）==========
@@ -477,6 +437,13 @@ class DirectRedeemResponse(BaseModel):
     success: bool
     message: str
     team_name: Optional[str] = None
+
+
+@router.get("/queue-status")
+async def get_queue_status_api():
+    """获取邀请队列状态"""
+    from app.tasks import get_queue_status
+    return await get_queue_status()
 
 
 @router.get("/direct/{code}")
@@ -514,13 +481,15 @@ async def direct_redeem(request: Request, data: DirectRedeemRequest, db: Session
 
 
 async def _do_direct_redeem(data: DirectRedeemRequest, db: Session):
-    """实际执行直接兑换逻辑"""
-    # 验证兑换码（加锁防止并发）
+    """实际执行直接兑换逻辑 - 排队模式"""
+    from app.tasks import enqueue_invite
+    
+    # 验证兑换码
     code = db.query(RedeemCode).filter(
         RedeemCode.code == data.code.strip().upper(),
         RedeemCode.code_type == RedeemCodeType.DIRECT,
         RedeemCode.is_active == True
-    ).with_for_update().first()
+    ).first()
     
     if not code:
         raise HTTPException(status_code=400, detail="兑换码无效")
@@ -531,7 +500,7 @@ async def _do_direct_redeem(data: DirectRedeemRequest, db: Session):
     if code.used_count >= code.max_uses:
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
-    # 原子性增加使用次数，防止并发超额
+    # 原子性增加使用次数
     from sqlalchemy import update
     result = db.execute(
         update(RedeemCode)
@@ -541,52 +510,22 @@ async def _do_direct_redeem(data: DirectRedeemRequest, db: Session):
     )
     
     if result.rowcount == 0:
-        db.rollback()
         raise HTTPException(status_code=400, detail="兑换码已用完")
     
-    # 查找有空位的 Team
-    available_team = get_available_team(db, code.group_id)
+    db.commit()
     
-    if not available_team:
-            raise HTTPException(status_code=400, detail="所有 Team 已满，请稍后再试")
-    
-    # 发送邀请
+    # 加入队列
     try:
-        api = ChatGPTAPI(available_team.session_token, available_team.device_id or "")
-        await api.invite_members(
-            available_team.account_id, 
-            [data.email.lower().strip()]
-        )
-        
-        # 记录邀请（使用次数已在前面原子更新）
-        invite = InviteRecord(
-            team_id=available_team.id,
+        await enqueue_invite(
             email=data.email.lower().strip(),
-            status=InviteStatus.SUCCESS,
             redeem_code=code.code,
-            batch_id=f"direct-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            group_id=code.group_id
         )
-        db.add(invite)
-        
-        # 记录操作日志
-        log = OperationLog(
-            action="直接邀请",
-            target=data.email.lower().strip(),
-            team_id=available_team.id,
-            details=f"使用直接链接 {code.code} 邀请 {data.email}"
-        )
-        db.add(log)
-        db.commit()
-        
-        # 发送 Telegram 通知
-        await send_invite_telegram_notify(db, data.email, available_team.name, code.code)
         
         return DirectRedeemResponse(
             success=True,
-            message="邀请已发送！请查收邮箱并接受邀请",
-            team_name=available_team.name
+            message="已加入队列，邀请将在几秒内发送，请稍后查收邮箱",
+            team_name=None
         )
-    except ChatGPTAPIError as e:
-        raise HTTPException(status_code=400, detail=f"邀请失败: {e.message}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"邀请失败: {str(e)}")
+        raise HTTPException(status_code=503, detail=str(e))
