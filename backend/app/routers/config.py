@@ -39,6 +39,7 @@ DEFAULT_CONFIGS = [
     {"key": "linuxdo_client_id", "description": "LinuxDO OAuth Client ID"},
     {"key": "linuxdo_client_secret", "description": "LinuxDO OAuth Client Secret"},
     {"key": "linuxdo_redirect_uri", "description": "LinuxDO OAuth 回调地址"},
+    {"key": "site_url", "description": "站点 URL（用于生成链接）"},
     {"key": "site_title", "description": "站点标题"},
     {"key": "site_description", "description": "站点描述"},
     {"key": "min_trust_level", "description": "最低信任等级要求（0-4）"},

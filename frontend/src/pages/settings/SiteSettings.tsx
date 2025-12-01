@@ -66,6 +66,15 @@ export default function SiteSettings() {
 
       <Card loading={loading}>
         <Form form={form} layout="vertical" style={{ maxWidth: 600 }}>
+          <Form.Item 
+            name="site_url" 
+            label="站点 URL" 
+            extra="你的站点域名，用于生成直接邀请链接和 Telegram Bot Webhook"
+            rules={[{ type: 'url', message: '请输入有效的 URL' }]}
+          >
+            <Input placeholder="https://team.example.com" size="large" />
+          </Form.Item>
+
           <Form.Item name="site_title" label="站点标题" extra="显示在首页和浏览器标签上">
             <Input placeholder="ChatGPT Team 自助上车" size="large" />
           </Form.Item>
