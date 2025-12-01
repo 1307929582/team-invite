@@ -195,7 +195,7 @@ async def setup_telegram_webhook(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """设置 Telegram Bot Webhook"""
+    """设置 Telegram Bot Webhook 和命令菜单"""
     import httpx
     
     bot_token = get_config_value(db, "telegram_bot_token")
@@ -211,18 +211,38 @@ async def setup_telegram_webhook(
     
     try:
         async with httpx.AsyncClient(timeout=10) as client:
+            # 1. 设置 Webhook
             resp = await client.post(
                 f"https://api.telegram.org/bot{bot_token}/setWebhook",
                 json={"url": webhook_url}
             )
             result = resp.json()
             
-            if result.get("ok"):
-                return {"message": f"Webhook 设置成功: {webhook_url}"}
-            else:
-                raise HTTPException(status_code=400, detail=f"设置失败: {result.get('description')}")
+            if not result.get("ok"):
+                raise HTTPException(status_code=400, detail=f"Webhook 设置失败: {result.get('description')}")
+            
+            # 2. 设置命令菜单
+            commands = [
+                {"command": "start", "description": "显示帮助信息"},
+                {"command": "status", "description": "查看系统状态"},
+                {"command": "seats", "description": "座位统计"},
+                {"command": "teams", "description": "Team 列表"},
+                {"command": "alerts", "description": "查看预警"},
+                {"command": "sync", "description": "同步所有成员"},
+                {"command": "code", "description": "生成兑换码 (如: /code 5)"},
+                {"command": "dcode", "description": "生成直接链接 (如: /dcode 5)"},
+            ]
+            
+            await client.post(
+                f"https://api.telegram.org/bot{bot_token}/setMyCommands",
+                json={"commands": commands}
+            )
+            
+            return {"message": f"设置成功！Webhook: {webhook_url}"}
     except httpx.TimeoutException:
         raise HTTPException(status_code=400, detail="连接超时")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
