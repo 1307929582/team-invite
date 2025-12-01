@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Form, Input, Button, message, Switch, Divider, Alert } from 'antd'
-import { ArrowLeftOutlined, SendOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SendOutlined, RobotOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { configApi } from '../../api'
 
@@ -9,6 +9,7 @@ export default function TelegramSettings() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [settingWebhook, setSettingWebhook] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -145,7 +146,7 @@ export default function TelegramSettings() {
 
           <Divider />
 
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Button type="primary" onClick={handleSave} loading={saving}>
               保存配置
             </Button>
@@ -154,6 +155,54 @@ export default function TelegramSettings() {
             </Button>
           </div>
         </Form>
+      </Card>
+
+      {/* Bot 命令功能 */}
+      <Card style={{ maxWidth: 600, marginTop: 20 }}>
+        <h3 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <RobotOutlined style={{ color: '#0088cc' }} />
+          Telegram Bot 命令
+        </h3>
+        <Alert
+          message="启用 Bot 命令功能"
+          description={
+            <div>
+              <p style={{ margin: '8px 0' }}>设置 Webhook 后，可以在 Telegram 中使用以下命令管理系统：</p>
+              <ul style={{ paddingLeft: 20, margin: '8px 0' }}>
+                <li><code>/status</code> - 查看系统状态</li>
+                <li><code>/seats</code> - 座位统计</li>
+                <li><code>/teams</code> - Team 列表</li>
+                <li><code>/alerts</code> - 查看预警</li>
+                <li><code>/sync</code> - 同步所有成员</li>
+                <li><code>/code 5</code> - 生成 5 个兑换码</li>
+                <li><code>/dcode 5</code> - 生成 5 个直接链接</li>
+              </ul>
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Button 
+          icon={<RobotOutlined />}
+          loading={settingWebhook}
+          onClick={async () => {
+            setSettingWebhook(true)
+            try {
+              await configApi.setupTelegramWebhook()
+              message.success('Webhook 设置成功！现在可以在 Telegram 中使用命令了')
+            } catch (e: any) {
+              message.error(e.response?.data?.detail || '设置失败')
+            } finally {
+              setSettingWebhook(false)
+            }
+          }}
+        >
+          设置 Webhook
+        </Button>
+        <p style={{ color: '#64748b', fontSize: 12, marginTop: 8 }}>
+          注意：需要先在「站点配置」中设置正确的站点 URL
+        </p>
       </Card>
     </div>
   )

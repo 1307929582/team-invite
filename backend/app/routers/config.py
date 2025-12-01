@@ -189,6 +189,43 @@ async def test_telegram(
         raise HTTPException(status_code=400, detail=f"{e.message}: {e.detail}")
 
 
+@router.post("/setup-telegram-webhook")
+async def setup_telegram_webhook(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """设置 Telegram Bot Webhook"""
+    import httpx
+    
+    bot_token = get_config_value(db, "telegram_bot_token")
+    site_url = get_config_value(db, "site_url")
+    
+    if not bot_token:
+        raise HTTPException(status_code=400, detail="请先配置 Telegram Bot Token")
+    
+    if not site_url:
+        raise HTTPException(status_code=400, detail="请先配置站点 URL（site_url）")
+    
+    webhook_url = f"{site_url.rstrip('/')}/api/v1/telegram/webhook"
+    
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/setWebhook",
+                json={"url": webhook_url}
+            )
+            result = resp.json()
+            
+            if result.get("ok"):
+                return {"message": f"Webhook 设置成功: {webhook_url}"}
+            else:
+                raise HTTPException(status_code=400, detail=f"设置失败: {result.get('description')}")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=400, detail="连接超时")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 def get_config_value(db: Session, key: str, default: str = "") -> str:
     """获取配置值"""
     config = db.query(SystemConfig).filter(SystemConfig.key == key).first()

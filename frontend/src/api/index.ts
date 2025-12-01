@@ -104,6 +104,7 @@ export const configApi = {
     api.post('/config/batch', configs),
   testEmail: () => api.post('/config/test-email'),
   testTelegram: () => api.post('/config/test-telegram'),
+  setupTelegramWebhook: () => api.post('/config/setup-telegram-webhook'),
   checkAlerts: () => api.post('/config/check-alerts'),
 }
 
